@@ -118,8 +118,8 @@ Estruturar a base do projeto e iniciar a configuração do ambiente de desenvolv
 | Documentar a API conforme desenvolvimento                                                            | 3                          |
 
 
-**Complexidade total da Sprint:**74
-**Quantidade de histórias planejadas:**Alta
+Complexidade total da Sprint:74
+Quantidade de histórias planejadas:Alta
 
 ### 📉 Gráfico Burndown
 ![Burndown Sprint 1](/docs/sprint-1/burndown.png)  
