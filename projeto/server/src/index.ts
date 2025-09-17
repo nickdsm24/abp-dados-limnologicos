@@ -5,6 +5,11 @@ import { errorHandler } from "./middlewares/errorHandler";
 import cors from "cors";
 import { corsOptions } from "./configs/corsConfig";
 
+// Endpoints
+import healthRoutesBalcar from './routes/balcar/health';
+import healthRoutesFurnas from './routes/furnas/health';
+import healthRoutesSima from './routes/sima/health';
+
 // Carrega as variáveis de ambiente definidas no arquivo .env
 dotenv.config();
 
@@ -25,6 +30,11 @@ app.use(express.urlencoded({ extended: true }));
 
 // Rotas principais
 app.use("/", router);
+
+// Endpoint de health check
+app.use('/api', healthRoutesBalcar);
+app.use('/api', healthRoutesFurnas);
+app.use('/api', healthRoutesSima);
 
 // Middleware para rotas não encontradas
 app.use((_req: Request, res: Response) => {
