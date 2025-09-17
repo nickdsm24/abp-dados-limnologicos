@@ -56,7 +56,7 @@ services:
   server-app:
     build:
       context: ./server
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: server-app
     restart: always
     networks:
@@ -92,6 +92,7 @@ services:
       CORS_ORIGIN: http://localhost:3002
     volumes:
       - ./server:/usr/src/app
+      - /usr/src/app/node_modules
       - ./logs:/usr/src/app/logs
     command: npm run dev
     ports:
