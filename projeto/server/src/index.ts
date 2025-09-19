@@ -10,6 +10,9 @@ import healthRoutesBalcar from './routes/balcar/health';
 import healthRoutesFurnas from './routes/furnas/health';
 import healthRoutesSima from './routes/sima/health';
 
+// Rotas SIMA
+import sensorRoutes from './routes/sima/sensorRoutes';
+
 // Carrega as variáveis de ambiente definidas no arquivo .env
 dotenv.config();
 
@@ -30,6 +33,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Rotas principais
 app.use("/", router);
+
+// Rota Sensor (SIMA)
+app.use('/api', sensorRoutes);
 
 // Endpoint de health check
 app.use('/api', healthRoutesBalcar);
