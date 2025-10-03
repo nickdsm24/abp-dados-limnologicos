@@ -1,0 +1,132 @@
+Levantamento de dados:
+
+1. Geolocalização (TBReservatório e TBSítio)
+
+1.1 Criar um mapa com marcadores para cada reservatório e sítio
+1.2 Exibir as informações adicionais quando os marcadores forem clicados (Ex: Nome, descrição)
+
+2. Campanhas e sítios (TBInstituição e TBSítio)
+
+2.1 Mostrar em quais sítios e reservatórios uma campanha foi realizada, identificando-as com diferentes ícones/cores
+2.2 Exibir as informações adicionais da campanha quando o seu marcador for clicado (Ex: número, data de início, data de fim)
+
+3. Dados de precipitação e Nível do reservatório (TBDadosPrecipitação e TBDadosRepresa)
+
+3.1 Representar as medições de precipitação nos reservatórios visualmente (Ex: diferentes cores para a escala da precipitação)
+3.2 Exibir o nível de água e o volume útil de cada reservatório, podendo fazer as análises de suas tendências e históricos de dados
+
+4. Relacionamento de sítios e parâmetros ambientais (TBAbióticoColuna, TBÁguaMatériaOrgânicaSedimento, TBBolhas)
+
+4.1 Criar camadas adicionais para mostrar a localização das medições ambientais
+4.2 As medições podem ser representadas de forma interativa, permitindo que o usuário clique em algum ponto de coleta e veja as médias e valores individuais de cada parâmetro
+
+5. Filtros e interatividade
+
+Incorporar filtros interativos para que os usuários possam ver dados específicos (Ex: Somente precipitação, temperatura, nível do reservatório)
+
+6. Visualização de dados
+
+Dados como precipitação, nível de reservatório e parâmetros ambientais podem ser representados com gráficos dinâmicos ou mapas de calor (heatmaps)
+
+A cada ponto de coleta ou reservatório, um pop-up pode aparecer com um gráfico simples ou lista de dados sobre o parâmetro.
+
+Exemplos de ferramentas para criar o mapa interativo:
+
+Leaflet.js (biblioteca JavaScript para mapas interativos): Perfeita para exibir marcadores em mapas.
+
+Mapbox: Para mapas personalizados com estilo e interatividade.
+
+ArcGIS Online: Para criar mapas mais avançados, com análises espaciais e visualizações dinâmicas.
+
+Google Maps API: Para uma solução simples e amplamente conhecida, com a possibilidade de adicionar marcadores e camadas de dados.
+
+
+
+
+
+
+
+
+Com base nesse modelo ER (Entidade-Relacionamento) que você forneceu, podemos identificar vários pontos de dados que podem ser usados para criar um mapa interativo. Abaixo, listo alguns dos pontos-chave para você começar a projetar um mapa interativo:
+
+1. Reservatórios e Sítios (Geolocalização)
+
+TBRESERVATORIO e TBSITIO possuem as coordenadas geográficas (lat e lng) que permitem que você plotar esses pontos em um mapa interativo.
+
+TBRESERVATORIO: Cada reservatório tem um nome, e as coordenadas de latitude e longitude.
+
+TBSITIO: Cada sítio também tem coordenadas geográficas (lat, lng) e está relacionado a um reservatório.
+
+O que fazer no mapa:
+
+Criar um mapa com marcadores para cada reservatório e sítio.
+
+Exibir informações adicionais (como nome e descrição do sítio) ao clicar nos marcadores.
+
+2. Campanhas e Sítios
+
+TBCAMPANHA associa TBINSTITUICAO (instituição responsável) com TBRESERVATORIO e TBSITIO.
+
+Cada campanha é realizada em sítios específicos dentro de um reservatório.
+
+O que fazer no mapa:
+
+Mostrar em que sítios e reservatórios uma campanha foi realizada, destacando diferentes campanhas com cores ou ícones.
+
+Ao clicar nos marcadores, exibir informações da campanha, como número e datas de início/fim.
+
+3. Dados de Precipitação e Nível do Reservatório
+
+TBDADOSPRECIPITACAO e TBDADOSREPRESA fornecem dados como:
+
+Precipitação registrada por reservatório.
+
+Nível de reservatório e volume útil medido.
+
+O que fazer no mapa:
+
+Representar visualmente as medições de precipitação nos reservatórios, por exemplo, com diferentes intensidades de cor (escala de precipitação).
+
+Exibir nível de água e volume útil de cada reservatório, com a possibilidade de fazer análises de tendências e históricos de dados.
+
+4. Relacionamento de Sítios e Parâmetros Ambientais
+
+As tabelas de medições científicas, como TBABIOTICOCOLUNA, TBAGUAMATERIAORGANICASEDIMENTO, TBBOLHAS, entre outras, são associadas a campanhas e sítios específicos.
+
+Esses dados podem representar medições de diversos parâmetros ambientais como oxigênio dissolvido, carbono, gases na água e sedimentos.
+
+O que fazer no mapa:
+
+Criar camadas adicionais que mostram a localização das medições ambientais.
+
+As medições podem ser representadas de forma interativa, permitindo que o usuário clique em um ponto de coleta e veja as médias ou valores individuais de cada parâmetro.
+
+5. Filtros e Interatividade
+
+Utilize filtros de campanha, instituição, reservatório e sítio para que o usuário possa escolher o que visualizar.
+
+Permitir comparações entre campanhas em diferentes sítios de um mesmo reservatório.
+
+O que fazer no mapa:
+
+Incorporar filtros interativos para que os usuários possam visualizar dados específicos (ex: somente precipitação, dados de temperatura, ou nível do reservatório).
+
+Incluir linhas do tempo ou seletores de datas para mostrar como as medições evoluíram ao longo das campanhas.
+
+6. Visualização de Dados
+
+Dados como precipitação, nível de reservatório e parâmetros ambientais podem ser representados com gráficos dinâmicos ou heatmaps (mapas de calor) no mapa.
+
+A cada ponto de coleta ou reservatório, um pop-up pode aparecer com um gráfico simples ou lista de dados sobre o parâmetro.
+
+Exemplos de ferramentas para criar o mapa interativo:
+
+Leaflet.js (biblioteca JavaScript para mapas interativos): Perfeita para exibir marcadores em mapas.
+
+Mapbox: Para mapas personalizados com estilo e interatividade.
+
+ArcGIS Online: Para criar mapas mais avançados, com análises espaciais e visualizações dinâmicas.
+
+Google Maps API: Para uma solução simples e amplamente conhecida, com a possibilidade de adicionar marcadores e camadas de dados.
+
+Com esses dados, você pode criar um mapa interativo dinâmico e detalhado, com informações de cada reservatório, campanha e medições ambientais. Isso não só facilita a visualização, mas também permite uma análise geoespacial interativa dos dados!
