@@ -1,8 +1,5 @@
 import { Router } from "express";
-import {
-  getAll,
-  getById
-} from "../../controllers/balcar/reservatorio.controller";
+import {getAll, getById} from "../../controllers/balcar/reservatorio.controller";
 
 const router = Router();
 

@@ -1,8 +1,5 @@
 import { Router } from "express";
-import {
-  getAll,
-  getById
-} from "../../controllers/balcar/sitio.controller";
+import {getAll, getById} from "../../controllers/balcar/sitio.controller";
 
 const router = Router();
 
