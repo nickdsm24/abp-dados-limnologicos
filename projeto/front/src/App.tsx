@@ -3,12 +3,11 @@ import './index.css';
 import { ThemeProvider } from "styled-components";
 import theme from "./styles/theme";
 import GlobalStyle from "./styles/GlobalStyle";
-import SimaPage from "./pages/SimaPage";
+import SimaMenu from "./pages/sima/SimaMenu";
 import BarraBrasil from "./components/commons/BarraBrasil";
 import MenuBar from "./components/commons/MenuBar";
-import BalcarPage from "./pages/BalcarPage";
-import FurnasPage from "./pages/FurnasPage";
-import InitialPage from "./pages/InitialPage"
+import About from "./pages/About"
+
 
 function App() {
   return (
@@ -20,10 +19,11 @@ function App() {
           <MenuBar />
           <div className="flex-1 w-full">
             <Routes>
-              <Route path="/" element={<InitialPage/>} />
-              <Route path="/sima" element={<SimaPage />} />
-              <Route path="/balcar" element={<BalcarPage />} />
-              <Route path="/furnas" element={<FurnasPage />} />
+              <Route path="/sima" element={<SimaMenu />} />
+              <Route path="/about" element={<About />} />
+              {/*<Route path="/" element={<InitialPage/>} />
+               <Route path="/balcar" element= />
+              <Route path="/furnas" element= /> */}
             </Routes>
           </div>
         </Router>
