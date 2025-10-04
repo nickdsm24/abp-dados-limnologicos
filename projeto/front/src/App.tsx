@@ -1,34 +1,40 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import './index.css';
-import { ThemeProvider } from "styled-components";
-import theme from "./styles/theme";
-import GlobalStyle from "./styles/GlobalStyle";
 import SimaMenu from "./pages/sima/SimaMenu";
+import Presentation from './pages/PresentationPage';
 import BarraBrasil from "./components/commons/BarraBrasil";
 import MenuBar from "./components/commons/MenuBar";
-import About from "./pages/About"
-
+import BalcarMenu from "./pages/balcar/BalcarMenu";
+import FurnasMenu from "./pages/furnas/FurnasMenu";
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <GlobalStyle />
-      <div className="w-full min-h-screen flex flex-col">
-        <Router>
-          <BarraBrasil />
-          <MenuBar />
-          <div className="flex-1 w-full">
-            <Routes>
-              <Route path="/sima" element={<SimaMenu />} />
-              <Route path="/about" element={<About />} />
-              {/*<Route path="/" element={<InitialPage/>} />
-               <Route path="/balcar" element= />
-              <Route path="/furnas" element= /> */}
-            </Routes>
-          </div>
-        </Router>
+    <Router>
+      <AppWithRouter />
+    </Router>
+  );
+}
+
+function AppWithRouter() {
+  const location = useLocation();
+  const presentationPage = location.pathname === "/"; // Verifica se está na página inicial
+
+  return (
+    <div>
+      <BarraBrasil />
+      
+      {/* Renderiza o MenuBar apenas se não estiver na página inicial */}
+      {!presentationPage && <MenuBar />}
+      
+      <div>
+        <Routes>
+          <Route path="/" element={<Presentation />} />
+          <Route path="/sima" element={<SimaMenu />} />
+          <Route path="/balcar" element={<BalcarMenu />} />
+          <Route path="/furnas" element={<FurnasMenu />} />
+        </Routes>
       </div>
-    </ThemeProvider>
+    </div>
   );
 }
 
