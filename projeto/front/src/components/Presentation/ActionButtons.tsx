@@ -1,57 +1,43 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const ActionButtons: React.FC = () => {
-  const buttonStyle: React.CSSProperties = {
-    padding: 'clamp(1rem, 4vw, 2.5rem) clamp(2rem, 6vw, 5rem)',
-    fontSize: 'clamp(0.9rem, 2vw, 1.2rem)',
-    border: 'none',
-    borderRadius: '12px',
-    cursor: 'pointer',
-    color: 'white',
-    background: `
-      repeating-linear-gradient(
-        45deg,
-        rgba(255,255,255,0.1),
-        rgba(255,255,255,0.1) 1px,
-        transparent 1px,
-        transparent 4px
-      ),
-      linear-gradient(135deg, #1777af 0%, #1a8cd8 100%)
-    `,
-    boxShadow: '0 6px 12px rgba(0,0,0,0.1)',
-    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-    flex: '1 1 200px',
-    maxWidth: '250px',
-  };
+  const navigate = useNavigate();
 
-  const handleMouseOver = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.currentTarget.style.transform = 'translateY(-4px)';
-    e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.2)';
-  };
-
-  const handleMouseOut = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.currentTarget.style.transform = 'translateY(0)';
-    e.currentTarget.style.boxShadow = '0 6px 12px rgba(0,0,0,0.1)';
-  };
+  // As classes do Tailwind são combinadas em uma constante para reutilização,
+  // mantendo o código limpo e fácil de ler.
+  const buttonClasses = `
+    font-bold text-white text-[clamp(0.9rem,2vw,1.2rem)]
+    p-[clamp(1rem,4vw,2.5rem)_clamp(2rem,6vw,5rem)]
+    border-none rounded-xl cursor-pointer
+    flex-1 basis-[200px] max-w-[250px]
+    shadow-lg hover:shadow-[0_10px_20px_rgba(0,0,0,0.2)]
+    transition-all duration-300 ease-in-out
+    transform hover:-translate-y-1
+    bg-[repeating-linear-gradient(45deg,rgba(255,255,255,0.1),rgba(255,255,255,0.1)_1px,transparent_1px,transparent_4px),linear-gradient(135deg,#1777af_0%,#1a8cd8_100%)]
+  `;
 
   return (
-    <section
-      style={{
-        display: 'flex',
-        justifyContent: 'center',
-        gap: '2rem',
-        flexWrap: 'wrap',
-        marginTop: '2rem',
-      }}
-    >
-      <button style={buttonStyle} onMouseOver={handleMouseOver} onMouseOut={handleMouseOut}>
+    <section className="flex justify-center flex-wrap gap-8 mt-8 pb-8 px-4">
+      <button
+        className={buttonClasses}
+        onClick={() => navigate('/balcar')}
+      >
         BALCAR
       </button>
-      <button style={buttonStyle} onMouseOver={handleMouseOver} onMouseOut={handleMouseOut}>
+
+      <button
+        className={buttonClasses}
+        onClick={() => navigate('/furnas')}
+      >
         FURNAS
       </button>
-      <button style={buttonStyle} onMouseOver={handleMouseOver} onMouseOut={handleMouseOut}>
-        SIMAS
+
+      <button
+        className={buttonClasses}
+        onClick={() => navigate('/sima')}
+      >
+        SIMA
       </button>
     </section>
   );

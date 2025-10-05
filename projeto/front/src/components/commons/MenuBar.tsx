@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom"; // Assumindo react-router-dom
 import { Menu, X, Waves } from "lucide-react"; // Adicionei Waves para o ícone de marca
 
@@ -31,7 +31,7 @@ function MenuBar() {
           {/* Logo / Título Principal */}
           <Link to="/" className="flex items-center space-x-2 text-xl font-extrabold text-white hover:text-gray-200 transition-colors">
             <Waves className="w-6 h-6 text-[#FFA500]" />
-            <span>Dashboard de Dados Limnológicos</span>
+            <span>Dados Limnológicos</span>
           </Link>
 
           {/* Menu Desktop */}
@@ -42,9 +42,7 @@ function MenuBar() {
             
             {/* Separador e links secundários */}
             <div className="w-px h-6 bg-white/30 mx-2"></div>
-            
-            <Link to="/about" className={desktopLinkClasses}>Sobre</Link>
-            <Link to="/contact" className={`${baseLinkClasses} bg-[#FFA500] hover:bg-[#ffb020] text-gray-900 shadow-md`}>Contato</Link>
+            <Link to="/about" className={`${baseLinkClasses} bg-[#FFA500] hover:bg-[#ffb020] text-gray-900 shadow-md`}>Informações Sobre os Projetos</Link>
           </div>
 
           {/* Botão Mobile (Hamburger/Close) */}
@@ -92,7 +90,7 @@ function MenuBar() {
             Sobre
           </Link>
           <Link 
-            to="/contact" 
+            to="/about" 
             onClick={handleLinkClick} 
             className={`block ${mobileLinkClasses} bg-[#FFA500] text-gray-900 font-bold hover:bg-[#ffb020]`}
           >

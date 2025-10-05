@@ -14,6 +14,7 @@ const app = express();
 // habilitar CORS
 app.use(cors(corsOptions));
 
+
 // Define a porta utilizada pelo servidor
 const PORT = process.env.PORT || 3000;
 
@@ -24,7 +25,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Rotas principais
-app.use("/", router);
+app.use("/api", router);
 
 // Middleware para rotas não encontradas
 app.use((_req: Request, res: Response) => {

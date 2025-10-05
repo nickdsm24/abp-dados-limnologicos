@@ -1,6 +1,7 @@
 import React from 'react';
 import Header from '../components/Presentation/Header';
 import WelcomePanel from '../components/Presentation/WelcomePanel';
+import PresentationText from '../components/Presentation/PresentationText';
 import ActionButtons from '../components/Presentation/ActionButtons';
 
 const Presentation: React.FC = () => {
@@ -24,6 +25,7 @@ const Presentation: React.FC = () => {
         }}
       >
         <WelcomePanel />
+        <PresentationText />
         <ActionButtons />
       </main>
     </div>
