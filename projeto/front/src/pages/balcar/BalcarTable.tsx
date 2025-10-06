@@ -312,7 +312,7 @@ const FluxDataTable: React.FC<FluxDataTableProps> = ({ data, sitios, campanhas, 
 // PÁGINA PRINCIPAL: src/pages/BalcarPage.tsx
 // =========================================================================
 
-export const BalcarPage: React.FC = () => {
+export const BalcarTable: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F3F7FB] p-4 sm:p-8 font-sans">
       <div className="max-w-7xl mx-auto">
@@ -342,4 +342,4 @@ export const BalcarPage: React.FC = () => {
   );
 };
 
-export default BalcarPage;
+export default BalcarTable;

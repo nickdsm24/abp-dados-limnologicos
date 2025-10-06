@@ -152,7 +152,7 @@ const formatDateTime = (isoString: string | undefined) => {
 // COMPONENTE PRINCIPAL: SimaPage
 // =========================================================================
 
-function SimaPage() {
+function SimaTable() {
   const [page, setPage] = useState(1);
   const [idestacao, setIdestacao] = useState<string>("32445"); // inicia com 32445
   const [dataInicio, setDataInicio] = useState<string>("2000-01-01");
@@ -393,4 +393,4 @@ function SimaPage() {
   );
 }
 
-export default SimaPage;
+export default SimaTable;

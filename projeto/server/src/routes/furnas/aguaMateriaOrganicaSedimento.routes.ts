@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getAll, getById } from "../../controllers/furnas/aguamateriaorganicasedimento.controller";
+import { getAll, getById } from "../../controllers/furnas/aguaMateriaOrganicaSedimento.controller";
 
 const router = Router();
 
