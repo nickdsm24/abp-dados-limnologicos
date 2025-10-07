@@ -112,8 +112,8 @@ export const mockFluxoInpe: FluxoInpe[] = [
 ];
 
 export const mockTabelaCampo: TabelaCampo[] = [
-  { idtabelacampo: 1, nome: 'ch4', rotulo: 'Gás Metano', unidade: '$\mu mol/m^2/h$', descricao: 'Fluxo de metano', ordem: 10 },
+  { idtabelacampo: 1, nome: 'ch4', rotulo: 'Gás Metano', unidade: '$mu mol/m^2/h$', descricao: 'Fluxo de metano', ordem: 10 },
   { idtabelacampo: 2, nome: 'batimetria', rotulo: 'Profundidade', unidade: 'm', descricao: 'Medida da profundidade da água', ordem: 20 },
-  { idtabelacampo: 3, nome: 'tempar', rotulo: 'Temperatura do Ar', unidade: '$^{\circ}C$', descricao: 'Temperatura do ar na hora da medição', ordem: 30 },
+  { idtabelacampo: 3, nome: 'tempar', rotulo: 'Temperatura do Ar', unidade: '$^{circ}C$', descricao: 'Temperatura do ar na hora da medição', ordem: 30 },
   { idtabelacampo: 4, nome: 'odsubsuperficie', rotulo: 'OD Sub-superfície', unidade: '$mg/L$', descricao: 'Oxigênio Dissolvido próximo à superfície', ordem: 40 },
 ];
