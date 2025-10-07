@@ -68,7 +68,7 @@ Para a versão **detalhada**, com todas as User Stories e critérios de aceite c
 | US06 | Front-End                        | Mapa interativo com pontos/polígonos (RF04)           | Alta       |
 | US07 | Front-End                        | Gráficos de séries temporais (RF05)                   | Alta       |
 | US08 | Front-End                        | Usabilidade e desempenho (RNF01, RNF02)               | Alta       |
-| US09 | Front-End                        | Seção “Sobre os Dados” e tooltips                     | Média      |
+| US09 | Front-End                        | Seção “Sobre os Dados”                                | Média      |
 | US10 | Back-End                         | Estrutura inicial do servidor Node.js + TypeScript    | Alta       |
 | US11 | Back-End                         | Endpoints de leitura de entidades                     | Alta       |
 | US12 | Back-End                         | Endpoint de exportação CSV                            | Média      |
@@ -97,7 +97,7 @@ O **Sprint Backlog** abaixo mostra as histórias selecionadas para esta sprint.
 | US01 | Prototipação no Figma                            | Alta       | 5      | Em andamento  | Protótipo aprovado pelo professor |
 | US02 | Identidade visual e responsividade               | Alta       | 3      | A fazer       | Interface clara e responsiva |
 | US03 | Estrutura inicial do Front-End (React + TS)     | Alta       | 3      | A fazer       | Projeto roda em localhost sem erros |
-| US04 | Tabela interativa + filtros                      | Alta       | 8      | A fazer       | Dados exibidos corretamente; filtros funcionando |
+| US04 | Tabela interativa                               | Alta       | 8      | A fazer       | Dados exibidos corretamente; filtros funcionando |
 | US08 | Usabilidade e performance                        | Alta       | 5      | A fazer       | Carregamento rápido; navegação intuitiva |
 | US09 | Informação sobre os dados (seção + tooltips)    | Média      | 3      | A fazer       | Usuário entende origem e significado dos dados |
 | US10 | Estrutura inicial do Back-End (Node.js + TS)    | Alta       | 3      | A fazer       | Servidor sobe com endpoint /health sem erros |
@@ -106,9 +106,23 @@ O **Sprint Backlog** abaixo mostra as histórias selecionadas para esta sprint.
 
 
 ### 🔍 Sprint Review
-- Data: 07/10/2025
-- Formato:  vídeo
-- Entrega:
+- **Data:** 07/10/2025  
+- **Formato:** Vídeo  
+
+---
+
+## ✅ O que deu certo
+- Boa colaboração entre devs, Scrum Master e PO durante toda a sprint  
+- Processo constante de aprendizagem  
+- O fluxo de trabalho seguiu conforme o planejado  
+
+---
+
+## ⚠️ Pontos a melhorar
+- Dividir as tasks em partes menores e fornecer material de apoio sempre que possível  
+- Buscar uma comunicação mais efetiva e frequente com o cliente, para alinhar expectativas e obter feedback mais cedo  
+- Estimar com mais precisão o tempo necessário para desenvolvimento das tasks  
+
 
 ### 🎲 Planning Poker  
 ## 🚀 Sprint Backlog – Sprint Atual (Resumo de Complexidade)
@@ -118,9 +132,9 @@ O **Sprint Backlog** abaixo mostra as histórias selecionadas para esta sprint.
 | US01 | Prototipação no Figma                            | 5                    |
 | US02 | Identidade visual e responsividade               | 3                    |
 | US03 | Estrutura inicial do Front-End (React + TS)     | 3                    |
-| US04 | Tabela interativa + filtros                      | 8                    |
+| US04 | Tabela interativa                               | 8                    |
 | US08 | Usabilidade e performance                        | 5                    |
-| US09 | Informação sobre os dados (seção + tooltips)    | 3                    |
+| US09 | Informação sobre os dados                       | 3                    |
 | US10 | Estrutura inicial do Back-End (Node.js + TS)    | 3                    |
 | US11 | Endpoints Read de Entidades                      | 8                    |
 | US13 | Endpoint séries temporais                        | 5                    |
@@ -133,4 +147,5 @@ O **Sprint Backlog** abaixo mostra as histórias selecionadas para esta sprint.
 
 ### 📉 Gráfico Burndown
 ![Burndown Sprint 1](/docs/sprint-1/burndown.png)  
+
 
