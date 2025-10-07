@@ -142,7 +142,8 @@ O **Sprint Backlog** abaixo mostra as histórias selecionadas para esta sprint.
 #### Total de pontos: 43
 
 ### 📉 Gráfico Burndown
-![Burndown Sprint 1](/docs/sprint-1/burndown.png)  
+![Burndown Sprint 1](/docs/sprint-1/burndown.png.png)  
+
 
 
 
