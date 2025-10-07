@@ -109,16 +109,12 @@ O **Sprint Backlog** abaixo mostra as histórias selecionadas para esta sprint.
 - **Data:** 07/10/2025  
 - **Formato:** Vídeo  
 
----
-
-## ✅ O que deu certo
+### ✅ O que deu certo
 - Boa colaboração entre devs, Scrum Master e PO durante toda a sprint  
 - Processo constante de aprendizagem  
 - O fluxo de trabalho seguiu conforme o planejado  
 
----
-
-## ⚠️ Pontos a melhorar
+### ⚠️ Pontos a melhorar
 - Dividir as tasks em partes menores e fornecer material de apoio sempre que possível  
 - Buscar uma comunicação mais efetiva e frequente com o cliente, para alinhar expectativas e obter feedback mais cedo  
 - Estimar com mais precisão o tempo necessário para desenvolvimento das tasks  
@@ -147,5 +143,6 @@ O **Sprint Backlog** abaixo mostra as histórias selecionadas para esta sprint.
 
 ### 📉 Gráfico Burndown
 ![Burndown Sprint 1](/docs/sprint-1/burndown.png)  
+
 
 
