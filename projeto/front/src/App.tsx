@@ -13,7 +13,7 @@ import BalcarTable from "./pages/balcar/BalcarTable";
 import BalcarGraph from "./pages/balcar/BalcarGraph";
 import BalcarMap from "./pages/balcar/BalcarMap";
 import FurnasMenu from "./pages/furnas/FurnasMenu";
-import FurnasTable from "./pages/furnas/FurnasTable";
+import FurnasTable from "./pages/furnas/PageFurnasTable";
 import FurnasGraph from "./pages/furnas/FurnasGraph";
 import FurnasMap from "./pages/furnas/FurnasMap";
 
