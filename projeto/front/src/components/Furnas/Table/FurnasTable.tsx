@@ -30,12 +30,46 @@ function FurnasTable({ tableName }: FurnasTableProps) {
     const resultado = nome.replace(/([A-Z])/g, ' $1');
     return resultado.charAt(0).toUpperCase() + resultado.slice(1);
   };
-  
-  const renderizarCelula = (item: unknown): string => {
-    if (item === null || item === undefined) return 'N/A';
-    if (typeof item === 'object') return JSON.stringify(item);
-    return String(item);
-  };
+
+  const renderizarCelula = (item: unknown, coluna: string): React.ReactNode => {
+    if (item === null || item === undefined) {
+      return 'N/A'; // Exibe 'N/A' quando o dado é nulo ou indefinido
+    }
+
+    // Caso o valor seja um array, você pode exibir seus itens de forma mais amigável
+    if (Array.isArray(item)) {
+      return item.join(', '); // Junta os itens do array em uma string
+    }
+
+    // Caso o valor seja um objeto, exibe uma propriedade específica ou um resumo
+    if (typeof item === 'object' && item !== null) {
+      const itemObj = item as Record<string, unknown>;
+
+      // Exemplo: Se o item tiver uma propriedade 'nome', exibe ela
+      if ('nome' in itemObj) {
+        return (itemObj as { nome: string }).nome; // Acessa a propriedade 'nome' de forma segura
+      }
+
+      // Para objetos genéricos, você pode exibir um resumo do objeto
+      return Object.keys(itemObj)
+      .map(key => `${key}: ${(itemObj[key] as string | number | boolean)}`)
+      .join(', '); 
+    // Exibe uma lista de chave-valor, tipo 'key: value'
+  }
+
+  // Se for uma string ou número, apenas retorna o valor como está
+  if (typeof item === 'string' || typeof item === 'number') {
+    return String(item); // Garantindo que tudo seja convertido para string
+  }
+
+  // Exemplo adicional de formatação para datas, caso a coluna seja uma data
+  if (coluna === 'data_inicio' && typeof item === 'string') {
+    const data = new Date(item);
+    return data.toLocaleDateString('pt-BR'); // Exibe data formatada no formato brasileiro
+  }
+
+  return String(item); // Retorna o valor como string, caso não tenha sido tratado
+};
 
   // --- Handlers de Eventos ---
   const handleFiltroChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,20 +82,20 @@ function FurnasTable({ tableName }: FurnasTableProps) {
     setPaginaAtual(1); // Reseta a paginação ao aplicar filtros
     setFiltrosAtivos(filtrosForm);
   };
-  
+
   const handlePaginaAnterior = () => {
     setPaginaAtual((prev) => Math.max(prev - 1, 1));
   };
-  
+
   const handlePaginaProxima = () => {
     setPaginaAtual((prev) => Math.min(prev + 1, paginacao.totalPages));
   };
-  
+
   return (
     // O JSX agora usa as variáveis (loading, error, dados) para renderizar a UI correta
     <div className="bg-[#F3F7FB] p-4 sm:p-6 lg:p-8" style={{ minHeight: 'calc(100vh)' }}>
       <div className="max-w-7xl mx-auto">
-        
+
         <header className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800 capitalize">
             Tabela: {tableName.replace('-', ' ')}
@@ -71,14 +105,14 @@ function FurnasTable({ tableName }: FurnasTableProps) {
 
         <form onSubmit={handleAplicarFiltros} className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
-              {/* Exemplo de Filtros */}
-              <div>
-                <label htmlFor="animal" className="block text-sm font-medium text-gray-700">Animal</label>
-                <input type="text" id="animal" name="animal" value={filtrosForm.animal} onChange={handleFiltroChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"/>
-              </div>
-              <button type="submit" className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-[#1777af] rounded-md hover:bg-opacity-90 h-10">
-                <Search className="w-4 h-4 mr-2" /> Aplicar Filtros
-              </button>
+            {/* Exemplo de Filtros */}
+            <div>
+              <label htmlFor="animal" className="block text-sm font-medium text-gray-700">Animal</label>
+              <input type="text" id="animal" name="animal" value={filtrosForm.animal} onChange={handleFiltroChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+            </div>
+            <button type="submit" className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-[#1777af] rounded-md hover:bg-opacity-90 h-10">
+              <Search className="w-4 h-4 mr-2" /> Aplicar Filtros
+            </button>
           </div>
         </form>
 
@@ -105,7 +139,7 @@ function FurnasTable({ tableName }: FurnasTableProps) {
               <p className="text-sm mt-1">Tente ajustar os filtros ou selecione outra tabela.</p>
             </div>
           )}
-          
+
           {!loading && !error && dados.length > 0 && (
             <>
               <div className="overflow-x-auto">
@@ -121,14 +155,16 @@ function FurnasTable({ tableName }: FurnasTableProps) {
                     {dados.map((item, index) => (
                       <tr key={typeof item.id === 'string' || typeof item.id === 'number' ? item.id : index} className="bg-white border-b hover:bg-[#F3F7FB]">
                         {colunas.map((col) => (
-                          <td key={col} className="px-6 py-4">{renderizarCelula(item[col])}</td>
+                          <td key={col} className="px-6 py-4">
+                            {renderizarCelula(item[col], col)}
+                          </td>
                         ))}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              
+
               <div className="flex items-center justify-between p-4 border-t border-gray-200">
                 <span className="text-sm text-gray-700">
                   Página <span className="font-semibold">{paginacao.page}</span> de <span className="font-semibold">{paginacao.totalPages}</span> ({paginacao.total} registros)
