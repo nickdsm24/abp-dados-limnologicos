@@ -1,6 +1,6 @@
 import { Request } from 'express';
 import { furnasPool } from '../configs/db';
-import { BaseService } from './BaseService';
+import { BaseService } from './baseService';
 import { logger } from '../configs/logger';
 
 class FurnasService extends BaseService {
@@ -12,6 +12,8 @@ class FurnasService extends BaseService {
      */
     public async findAbioticoSuperficie(query: Request['query']) {
         const page = Number(query.page) || 1;
+        const limit = 10;
+        const offset = (page - 1) * limit;
         // ...lógica de paginação...
 
         // Mapeamento específico para esta consulta
@@ -31,11 +33,19 @@ class FurnasService extends BaseService {
             LEFT JOIN tbsitio AS c ON a.idsitio = c.idsitio
         `;
         
-        const finalQuery = `${baseQuery} ${whereClause} ORDER BY c.nome LIMIT ...`; // Adicionar paginação
+        const finalQuery = `${baseQuery} ${whereClause} ORDER BY c.nome LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+        const finalParams = [...params, limit, offset];
         // ... lógica para executar a query com this.pool ...
         
-        logger.info('Executando query para Abiotico Superficie');
-        return { message: 'Dados de Abiotico Superficie aqui' };
+        try{
+            logger.info('Executando query para Abiotico Superfície.');
+            const result = await this.pool.query(finalQuery, finalParams);
+            return result.rows;
+
+        }   catch (error:any){
+            logger.error('Erro na query Abiotico Superfície:', error);
+            throw error;
+        }
     }
 
     /**
@@ -43,6 +53,12 @@ class FurnasService extends BaseService {
      */
     public async findSitios(query: Request['query']) {
         // Mapeamento específico para esta consulta
+
+        const page = Number(query.page) || 1;
+        const limit = 10;
+        const offset = (page - 1) * limit;
+        // ...lógica de paginação...
+
         const columnMap = {
             'idreservatorio': 'a.idreservatorio',
             'nome': 'a.nome' // Supondo que você possa filtrar pelo nome do sítio
@@ -57,16 +73,19 @@ class FurnasService extends BaseService {
             LEFT JOIN tbreservatorio AS b ON a.idreservatorio = b.idreservatorio
         `;
 
-        const finalQuery = `${baseQuery} ${whereClause} ORDER BY a.nome LIMIT ...`;
+        const finalQuery = `${baseQuery} ${whereClause} ORDER BY a.nome LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+        const finalParams = [...params, limit, offset];
         // ... lógica para executar a query com this.pool ...
 
-        logger.info('Executando query para Sitios');
-        return { message: 'Dados de Sitios aqui' };
-    }
+         try{
+            logger.info('Executando query para Sitios.');
+            const result = await this.pool.query(finalQuery, finalParams);
+            return result.rows;
 
-    // Adicione quantos métodos mais você precisar para este banco...
-    public async findCampanhas(query: Request['query']) {
-        // ...
+        }   catch (error:any){
+            logger.error('Erro na query Sitios:', error);
+            throw error;
+        }
     }
 }
 
