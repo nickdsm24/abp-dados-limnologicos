@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
-import { fetchFurnasData } from '../api/furnasApi';
-import type { DataType, PaginacaoState } from '../types/furnas';
+// 1. Imports atualizados para a nova API genérica e o tipo DatabaseName
+import { fetchTableData, type DatabaseName } from '../api/api'; // Ajuste o caminho se necessário
+import type { DataType, PaginacaoState } from '../types/types';
 
 type FilterParams = Record<string, string | number>;
 
-export const useFurnasData = (
+// 2. Hook renomeado e com o novo parâmetro 'database'
+export const useTableData = (
+  database: DatabaseName,
   tableName: string, 
   currentPage: number, 
   filters: FilterParams
@@ -23,6 +26,7 @@ export const useFurnasData = (
   const stringifiedFilters = JSON.stringify(filters);
 
   useEffect(() => {
+    // A guarda agora verifica se temos uma tabela para buscar
     if (!tableName) {
       setDados([]);
       setColunas([]);
@@ -34,7 +38,8 @@ export const useFurnasData = (
       setLoading(true);
       setError(null);
       try {
-        const resultado = await fetchFurnasData(tableName, currentPage, 10, filters);
+        // 3. Chamada à nova função de API, passando o 'database'
+        const resultado = await fetchTableData(database, tableName, currentPage, 10, filters);
         
         setDados(resultado.data || []);
         setPaginacao({
@@ -61,9 +66,9 @@ export const useFurnasData = (
     };
 
     loadData();
-    // A dependência `filters` é adicionada para silenciar o linter, 
-    // enquanto `stringifiedFilters` efetivamente controla as re-execuções.
-  }, [tableName, currentPage, stringifiedFilters, filters]);
+
+    // 4. Parâmetro 'database' adicionado às dependências do useEffect
+  }, [database, tableName, currentPage, stringifiedFilters, filters]);
 
   return { dados, colunas, paginacao, loading, error };
 };

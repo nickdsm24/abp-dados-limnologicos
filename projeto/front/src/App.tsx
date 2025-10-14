@@ -5,7 +5,7 @@ import MenuBar from "./components/commons/MenuBar";
 import Presentation from './pages/PresentationPage';
 import About from "./pages/About";
 import SimaMenu from "./pages/sima/SimaMenu";
-import SimaTable from "./pages/sima/SimaTable";
+import SimaTable from "./pages/sima/PageSimaTable";
 import SimaGraph from "./pages/sima/SimaGraph";
 import SimaMap from "./pages/sima/SimaMap";
 import BalcarMenu from "./pages/balcar/BalcarMenu";
@@ -59,3 +59,4 @@ function AppWithRouter() {
 }
 
 export default App;
+
