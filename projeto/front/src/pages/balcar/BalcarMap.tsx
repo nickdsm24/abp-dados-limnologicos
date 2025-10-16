@@ -4,6 +4,37 @@ import "leaflet/dist/leaflet.css";
 import { colors } from "../../components/Balcar/data/mockData";
 import L from "leaflet";
 
+interface ImageMap {
+  [key: string]: string;
+}
+
+const reservatorioImages: ImageMap = {
+  batalha: "/mapa/batalha.jpg",
+  corumba: "/mapa/corumba.jpg",
+  curuai: "/mapa/curua.jpg",
+  estreito: "/mapa/estreito.jpg",
+  funil: "/mapa/funil.jpg",
+  furnas: "/mapa/furnas.jpg",
+  itumbiara: "/mapa/itumbiara.jpg",
+  itaipu: "/mapa/itaipu.jpg",
+  jirau: "/mapa/jirau.jpg",
+  mamiraua: "/mapa/mamiraua.jpg",
+  manso: "/mapa/manso.jpg",
+  'mascarenhas-de-moraes': "/mapa/mascarenhas-de-moraes.jpg",
+  segredo: "/mapa/segredo.jpg",
+  'serra-da-mesa': "/mapa/serra-da-mesa.jpg",
+  'tres-marias': "/mapa/tres-marias.jpg",
+  tucurui: "/mapa/tucurui.jpg",
+  'santo-antonio': "/mapa/santo-antonio.jpg",
+};
+
+const formatNameForImageKey = (name: string): string => {
+  return name
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s/g, "-");
+};
+
 interface Reservatorio {
   idreservatorio: number;
   nome: string;
@@ -116,13 +147,33 @@ const BalcarMap: React.FC = () => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {reservatorios.map((reservatorio) =>
-          reservatorio.lat && reservatorio.lng ? (
+        {reservatorios.map((reservatorio) => {
+          if (!reservatorio.lat || !reservatorio.lng) return null;
+
+          const imageKey = formatNameForImageKey(reservatorio.nome);
+          const imageSrc = reservatorioImages[imageKey] || null;
+
+          return (
             <Marker
               key={reservatorio.idreservatorio}
               position={[reservatorio.lat, reservatorio.lng]}
             >
               <Popup>
+                {imageSrc && (
+                  <img
+                    src={imageSrc}
+                    alt={`Imagem do Reservatório ${reservatorio.nome}`}
+                    style={{
+                      width: "100%",
+                      height: "auto",
+                      maxHeight: "150px",
+                      marginBottom: "10px",
+                      borderRadius: "4px",
+                      objectFit: "cover"
+                    }}
+                  />
+                )}
+
                 <h3 style={{ color: colors.primary }} className="font-bold text-lg">
                   Reservatório: {reservatorio.nome}
                 </h3>
@@ -133,8 +184,8 @@ const BalcarMap: React.FC = () => {
                 <p>Lng: {reservatorio.lng.toFixed(4)}</p>
               </Popup>
             </Marker>
-          ) : null,
-        )}
+          );
+        })}
 
         {sitios.map((sitio) => {
           const reservatorioNome = reservatorioNameMap[sitio.idreservatorio] || "Nome Desconhecido";

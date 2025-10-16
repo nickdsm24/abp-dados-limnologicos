@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getAll, getById } from "../../controllers/furnas/ionsnaaguaintersticialdosedimento.controller";
+import { getAll, getById } from "../../controllers/furnas/ionsNaAguaIntersticialDoSedimento.controller";
 
 const router = Router();
 
