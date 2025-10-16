@@ -1,38 +1,26 @@
-import React from 'react';
+import React from "react";
 
 const Header: React.FC = () => {
   return (
-    <header className="w-full bg-white p-4 shadow-md relative z-10">
-      <div className="max-w-screen-xl mx-auto flex items-center flex-wrap gap-8">
-        
-        {/* Logo */}
+    <header className="w-full bg-white p-4 shadow-md relative z-10 h-[120px] flex items-center justify-center">
+      {/* Container geral com posição relativa */}
+      <div className="absolute left-10 flex items-center gap-8">
         <img
-          src="/cabecalho/inpe.png" // Substitua pelo caminho correto da imagem
-          alt="Logo"
-          className="w-[100px] h-[100px] object-contain"
+          src="/cabecalho/inpe.png"
+          alt="Logo INPE"
+          className="w-[90px] h-[90px] object-contain"
         />
-        {/* Logo */}
         <img
-          src="/cabecalho/labisa.png" 
-          alt="Logo-labisa"
-          className="w-[150px] h-[150px] object-contain"
+          src="/cabecalho/labisa.png"
+          alt="Logo LABISA"
+          className="w-[90px] h-[120px] object-contain"
         />
-
-        {/* Título*/}
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold text-gray-900 m-0 bg-clip-text text-transparent bg-gradient-to-r from-[#1777af] to-cyan-500">
-          Dados Limnológicos de Reservatórios do Brasil
-        </h1>
-
-        {/* Menu Button 
-        <div className="bg-gray-200 p-2 rounded-lg shadow-md">
-          <button
-            className="bg-blue-600 text-white py-2 px-4 rounded-md text-sm sm:text-base font-medium transition-colors duration-200 hover:bg-blue-700"
-          >
-            Menu
-          </button>
-        </div>
-        */}
       </div>
+
+      {/* Título centralizado sem ser empurrado pelas logos */}
+      <h1 className="text-center text-[clamp(1.2rem,2vw,1.9rem)] font-semibold text-gray-900 bg-clip-text text-transparent bg-gradient-to-r from-[#1777af] to-cyan-500">
+        Dados Limnológicos de Reservatórios do Brasil
+      </h1>
     </header>
   );
 };

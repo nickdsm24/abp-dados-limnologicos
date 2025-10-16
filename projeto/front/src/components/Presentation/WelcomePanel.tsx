@@ -192,7 +192,7 @@ const WelcomePanel: React.FC = () => {
               height: '12px',
               margin: '0 5px',
               borderRadius: '50%',
-              backgroundColor: currentSlide === index ? '#1777af' : 'rgba(255,255,255,0.5)', // Cor azul do tema ou branco transparente
+              backgroundColor: currentSlide === index ? '#1777af' : 'rgba(255, 255, 255, 0.5)', // Cor azul do tema ou branco transparente
               cursor: 'pointer',
               transition: 'background-color 0.3s',
             }}
