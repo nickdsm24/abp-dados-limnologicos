@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getAll, getById } from "../../controllers/furnas/camarasolo.controller";
+import { getAll, getById } from "../../controllers/furnas/camaraSolo.controller";
 
 const router = Router();
 
