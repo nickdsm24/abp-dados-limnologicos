@@ -4,6 +4,49 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { colorsFurnas } from "../../components/Furnas/data/mockData";
 
+interface ImageMap {
+  [key: string]: string;
+}
+
+const reservatorioImages: ImageMap = {
+  balbina: "mapa/balbina.jpg",
+  batalha: "/mapa/batalha.jpg",
+  'belo-monte': "/mapa/belo-monte.jpg",
+  corumba: "/mapa/corumba.jpg",
+  curuai: "/mapa/curua.jpg",
+  estreito: "/mapa/estreito.jpg",
+  funil: "/mapa/funil.jpg",
+  furnas: "/mapa/furnas.jpg",
+  itumbiara: "/mapa/itumbiara.jpg",
+  itaipu: "/mapa/itaipu.jpg",
+  jirau: "/mapa/jirau.jpg",
+  mamiraua: "/mapa/mamiraua.jpg",
+  manso: "/mapa/manso.jpg",
+  marimbondo: "mapa/marimbondo.jpg",
+  'mascarenhas-de-moraes': "/mapa/mascarenhas-de-moraes.jpg",
+  'porto-colombia': "mapa/porto-colombia.jpg",
+  segredo: "/mapa/segredo.jpg",
+  'serra-da-mesa': "/mapa/serra-da-mesa.jpg",
+  'tres-marias': "/mapa/tres-marias.jpg",
+  tucurui: "/mapa/tucurui.jpg",
+  'santo-antonio': "/mapa/santo-antonio.jpg",
+  xingo: "mapa/xingo.jpg"
+};
+
+const formatNameForImageKey = (name: string): string => {
+  return name
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
+    .replace(/ /g, "-")   
+    .replace("serra-da-mesa", "serra-da-mesa") 
+    .replace("tres-marias", "tres-marias")
+    .replace("belo-monte", "belo-monte")
+    .replace("santo-antonio", "santo-antonio")
+    .replace("porto-colombia", "porto-colombia")
+    .replace("mascarenhas-de-moraes", "mascarenhas-de-moraes");
+};
+
+
 interface Reservatorio {
   idreservatorio: number;
   nome: string;
@@ -105,13 +148,33 @@ const FurnasMap: React.FC = () => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {reservatorios.map((reservatorio) =>
-          reservatorio.lat && reservatorio.lng ? (
+        {reservatorios.map((reservatorio) => {
+          if (!reservatorio.lat || !reservatorio.lng) return null;
+
+          const imageKey = formatNameForImageKey(reservatorio.nome);
+          const imageSrc = reservatorioImages[imageKey] || null;
+
+          return (
             <Marker
               key={reservatorio.idreservatorio}
               position={[reservatorio.lat, reservatorio.lng]}
             >
               <Popup>
+                {imageSrc && (
+                  <img
+                    src={imageSrc}
+                    alt={`Imagem do Reservatório ${reservatorio.nome}`}
+                    style={{
+                      width: "100%", 
+                      height: "auto",
+                      maxHeight: "150px", 
+                      marginBottom: "10px",
+                      borderRadius: "4px",
+                      objectFit: "cover"
+                    }}
+                  />
+                )}
+
                 <h3 style={{ color: colorsFurnas.primary }} className="font-bold text-lg">
                   Reservatório: {reservatorio.nome}
                 </h3>
@@ -122,8 +185,8 @@ const FurnasMap: React.FC = () => {
                 <p>Lng: {reservatorio.lng.toFixed(4)}</p>
               </Popup>
             </Marker>
-          ) : null,
-        )}
+          );
+        })}
 
         {sitios.map((sitio) =>
           sitio.lat && sitio.lng ? (

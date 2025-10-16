@@ -4,6 +4,67 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { colorsSima } from "../../components/Sima/data/mockData";
 
+interface ImageMap {
+  [key: string]: string;
+}
+
+const reservatorioImages: ImageMap = {
+  antar: "/mapa/antar.jpg",
+  balbina: "/mapa/balbina.jpg",
+  batalha: "/mapa/batalha.jpg",
+  'belo-monte': "/mapa/belo-monte.jpg",
+  corumba: "/mapa/corumba.jpg",
+  curuai: "/mapa/curua.jpg",
+  estreito: "/mapa/estreito.jpg",
+  funil: "/mapa/funil.jpg",
+  furnas: "/mapa/furnas.jpg",
+  ibitinga: "/mapa/ibitinga.jpg",
+  itumbiara: "/mapa/itumbiara.jpg",
+  itaipu: "/mapa/itaipu.jpg",
+  jirau: "/mapa/jirau.jpg",
+  mamiraua: "/mapa/mamiraua.jpg",
+  manso: "/mapa/manso.jpg",
+  marimbondo: "/mapa/marimbondo.jpg",
+  'mascarenhas-de-moraes': "/mapa/mascarenhas-de-moraes.jpg",
+  'porto-colombia': "/mapa/porto-colombia.jpg",
+  segredo: "/mapa/segredo.jpg",
+  'serra-da-mesa': "/mapa/serra-da-mesa.jpg",
+  'tres-marias': "/mapa/tres-marias.jpg",
+  tucurui: "/mapa/tucurui.jpg",
+  'santo-antonio': "/mapa/santo-antonio.jpg",
+  xingo: "/mapa/xingo.jpg"
+};
+
+const formatNameForImageKey = (name: string): string => {
+  const formattedName = name
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/ /g, "-")
+    .replace(/--/g, "-");
+  
+  const namesToMatch = [
+    'mascarenhas-de-moraes', 
+    'serra-da-mesa', 
+    'tres-marias', 
+    'santo-antonio',
+    'belo-monte',
+    'porto-colombia'
+  ];
+
+  for (const matchName of namesToMatch) {
+    if (formattedName.startsWith(matchName)) {
+      return matchName;
+    }
+  }
+
+  const baseMatch = formattedName.match(/^([a-z]+)/); 
+  if (baseMatch && baseMatch[1]) {
+    return baseMatch[1];
+  }
+
+  return formattedName;
+};  
+
 interface ApiResponse<T> {
   success: boolean;
   page: number;
@@ -114,7 +175,6 @@ const SimaMap: React.FC = () => {
     for (const registro of simaRegistros) {
       const id = registro.estacao.idestacao;
       const precipitacao = registro.precipitacao;
-
       if (precipitacao !== null && precipitacao !== undefined && !lastPrecipitacaoMap.has(id)) {
         lastPrecipitacaoMap.set(id, precipitacao);
       }
@@ -158,14 +218,38 @@ const SimaMap: React.FC = () => {
             estacao.lng && (
               <Marker key={estacao.idestacao} position={[estacao.lat, estacao.lng]}>
                 <Popup>
-                  <h3 style={{ color: colorsSima.primary }} className="font-bold text-lg">
-                    Estação: {estacao.rotulo}
-                  </h3>
-                  <p>ID da Estação: {estacao.idestacao}</p>
-                  <p>Início: {formatDate(estacao.inicio)}</p>
-                  <p>Fim: {estacao.fim ? formatDate(estacao.fim) : "Em operação"}</p>
-                  <p>Latitude: {estacao.lat.toFixed(4)}</p>
-                  <p>Longitude: {estacao.lng.toFixed(4)}</p>
+                  {(() => {
+                    const imageKey = formatNameForImageKey(estacao.rotulo);
+                    const imageSrc = reservatorioImages[imageKey] || null;
+
+                    return (
+                      <>
+                        {imageSrc && (
+                          <img
+                            src={imageSrc}
+                            alt={`Imagem da Estação ${estacao.rotulo}`}
+                            style={{
+                              width: "100%",
+                              height: "auto",
+                              maxHeight: "150px",
+                              marginBottom: "10px",
+                              borderRadius: "4px",
+                              objectFit: "cover"
+                            }}
+                          />
+                        )}
+
+                        <h3 style={{ color: colorsSima.primary }} className="font-bold text-lg">
+                          Estação: {estacao.rotulo}
+                        </h3>
+                        <p>ID da Estação: {estacao.idestacao}</p>
+                        <p>Início: {formatDate(estacao.inicio)}</p>
+                        <p>Fim: {estacao.fim ? formatDate(estacao.fim) : "Em operação"}</p>
+                        <p>Latitude: {estacao.lat.toFixed(4)}</p>
+                        <p>Longitude: {estacao.lng.toFixed(4)}</p>
+                      </>
+                    );
+                  })()}
                 </Popup>
               </Marker>
             ),
