@@ -32,45 +32,82 @@ function DataTable({ database, tableName }: DataTableProps) {
   // --- NOVA FUNÇÃO DE RENDERIZAÇÃO (DO COMPONENTE 2) ---
   // Agora ela recebe também o nome da coluna para formatações específicas.
   const renderizarCelula = (item: unknown, coluna: string): React.ReactNode => {
-    // 1. Trata valores nulos ou indefinidos
-    if (item === null || item === undefined) {
-      return <span className="text-gray-400 italic">N/A</span>;
+  // 1. Trata valores nulos ou indefinidos
+  if (item === null || item === undefined) {
+    return <span className="text-gray-400 italic">N/A</span>;
+  }
+
+  // 2. Trata arrays
+  if (Array.isArray(item)) {
+    return item.join(', ');
+  }
+
+  // 3. Trata objetos
+  if (typeof item === 'object' && item !== null) {
+    const itemObj = item as Record<string, unknown>;
+
+    // --- Campos/Casos conhecidos e específicos ---
+    if ('nrocampanha' in itemObj) {
+      return String(itemObj.nrocampanha);
+    }
+    if('nroCampanha' in itemObj){
+      return String(itemObj.nroCampanha);
+    }
+    if ('rotulo' in itemObj) {
+      return String(itemObj.rotulo);
+    }
+    if ('descricao' in itemObj) {
+      return String(itemObj.descricao);
+    }
+    if ('nome' in itemObj) {
+      return String(itemObj.nome);
     }
 
-    // 2. Trata arrays
-    if (Array.isArray(item)) {
-      return item.join(', ');
+    // --- Fallback genérico ---
+    // Caso o objeto não tenha propriedades conhecidas, tenta encontrar um campo "visível".
+    // Isso evita mostrar JSON cru no front.
+    const visibleKey = Object.keys(itemObj).find(
+      (k) =>
+        k.toLowerCase().includes('nro') ||
+        k.toLowerCase().includes('nome') ||
+        k.toLowerCase().includes('rotulo') ||
+        k.toLowerCase().includes('descricao')
+    );
+
+    if (visibleKey && typeof itemObj[visibleKey] === 'string') {
+      return itemObj[visibleKey] as string;
     }
 
-    // 3. Trata objetos
-    if (typeof item === 'object' && item !== null) {
-      const itemObj = item as Record<string, unknown>;
+    // --- Caso nada legível seja encontrado ---
+    return (
+      <pre className="text-xs bg-gray-100 p-1 rounded whitespace-pre-wrap">
+        {JSON.stringify(item, null, 2)}
+      </pre>
+    );
+  }
 
-      // Exemplo de regra específica: se o objeto tiver a propriedade 'nome', exiba-a.
-      if ('nome' in itemObj && typeof itemObj.nome === 'string') {
-        return itemObj.nome;
-      }
-      
-      // Para objetos genéricos, você pode exibir uma versão simplificada
-      return <pre className="text-xs bg-gray-100 p-1 rounded whitespace-pre-wrap">{JSON.stringify(item, null, 2)}</pre>;
+  // 4. Trata datas (fora do bloco anterior)
+  if (
+    (coluna.includes('data') ||
+      coluna.includes('date') ||
+      coluna.endsWith('At')) &&
+    typeof item === 'string'
+  ) {
+    const data = new Date(item);
+    if (!isNaN(data.getTime())) {
+      return data.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
     }
-    
-    // 4. Trata datas (exemplo)
-    // Você pode adicionar mais nomes de colunas que sejam datas aqui.
-    if ((coluna.includes('data') || coluna.includes('date') || coluna.endsWith('At')) && typeof item === 'string') {
-       const data = new Date(item);
-       // Verifica se a data é válida antes de formatar
-       if (!isNaN(data.getTime())) {
-         return data.toLocaleDateString('pt-BR', {
-            day: '2-digit', month: '2-digit', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-         });
-       }
-    }
-    
-    // 5. Valor padrão: converte para string
-    return String(item);
-  };
+  }
+
+  // 5. Valor padrão: converte para string
+  return String(item);
+};
 
   const handleFiltroChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
