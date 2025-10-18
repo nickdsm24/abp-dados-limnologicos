@@ -1,35 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface Slide {
   title: string;
   message: string;
   image?: string;
-  // Opcional: para ter um controle de fundo diferente para cada slide
-  // backgroundColor?: string;
 }
 
 const slides: Slide[] = [
-  {
-    title: 'Seja Bem-vindo!',
-    message: 'Explore o sistema de monitoramento de áreas suscetíveis a enchentes e inundações.',
-    image: '/carrossel1.png', // Certifique-se de que estes paths estão corretos
-  },
-  {
-    title: 'Dados em Tempo Real',
-    message: 'Acompanhe informações atualizadas sobre o nível das águas e alertas de risco.',
-    image: '/carrossel2.png',
-  },
-  {
-    title: 'Prevenção e Segurança',
-    message: 'Receba notificações e orientações para manter sua segurança e de sua comunidade.',
-    image: '/carrossel3.png',
-  },
+  { title: 'Seja Bem-vindo!', message: 'Explore o sistema...', image: '/carrossel1.png' },
+  { title: 'Dados em Tempo Real', message: 'Acompanhe informações...', image: '/carrossel2.png' },
+  { title: 'Prevenção e Segurança', message: 'Receba notificações...', image: '/carrossel3.png' },
 ];
 
 const WelcomePanel: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [height, setHeight] = useState<number>(0);
 
-  // Avança automaticamente a cada 5 segundos
+  // Cria refs individualmente para cada slide
+  const slideRefs = useRef<HTMLDivElement[]>([]);
+
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -37,100 +26,101 @@ const WelcomePanel: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % slides.length);
-  };
+  // Atualiza altura
+  useEffect(() => {
+    const currentSlideEl = slideRefs.current[currentSlide];
+    if (currentSlideEl) setHeight(currentSlideEl.offsetHeight);
+  }, [currentSlide]);
 
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % slides.length);
+  const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+
+  // Swipe mobile
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+  const handleTouchStart = (e: React.TouchEvent) => (touchStartX.current = e.changedTouches[0].screenX);
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    touchEndX.current = e.changedTouches[0].screenX;
+    const diff = touchStartX.current - touchEndX.current;
+    if (diff > 50) nextSlide();
+    if (diff < -50) prevSlide();
   };
 
   return (
     <section
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
       style={{
-        // Removi backgroundColor para que o slide individual defina o fundo
-        // Aumentei um pouco o padding vertical para dar mais espaço
-        padding: '6vh 0', 
+        maxWidth: '900px',
+        margin: '40px auto',
         borderRadius: '16px',
         boxShadow: '0 12px 24px rgba(0,0,0,0.15)',
-        maxWidth: '900px',
-        margin: 'auto',
-        position: 'relative',
         overflow: 'hidden',
-        textAlign: 'center',
-        minHeight: '450px', // Altura mínima para o carrossel
-        display: 'flex', // Para garantir que o conteúdo do carrossel se alinhe
-        alignItems: 'center', // Centraliza verticalmente o slide ativo
+        position: 'relative',
+        height,
+        transition: 'height 0.5s ease',
       }}
     >
+      {/* Slides */}
       <div
         style={{
           display: 'flex',
-          transition: 'transform 0.8s ease-in-out',
           transform: `translateX(-${currentSlide * 100}%)`,
+          transition: 'transform 0.8s ease-in-out',
           width: `${slides.length * 100}%`,
-          height: '100%', // Para que os slides ocupem a altura do container pai
         }}
       >
         {slides.map((slide, index) => (
           <div
             key={index}
+            ref={(el) => {
+              if (el) slideRefs.current[index] = el; // Atribui o elemento ao array
+            }}
             style={{
               flex: '0 0 100%',
-              // Removi padding aqui para que a imagem possa ir até as bordas
-              boxSizing: 'border-box',
-              position: 'relative', // Essencial para posicionar a imagem e o texto
+              position: 'relative',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center',
               alignItems: 'center',
-              minHeight: '400px', // Altura mínima para cada slide
-              // Um fundo padrão caso a imagem não exista ou para uma camada sobre a imagem
-              backgroundColor: slide.image ? 'rgba(0,0,0,0.4)' : '#333', // Camada escura sobre a imagem ou fundo sólido
-              color: 'white', // Texto branco para contraste
+              padding: '40px 20px',
+              boxSizing: 'border-box',
               textAlign: 'center',
+              color: 'white',
             }}
           >
             {slide.image && (
               <img
                 src={slide.image}
                 alt={slide.title}
+                loading="lazy"
                 style={{
-                  position: 'absolute', // Posiciona a imagem como fundo
+                  position: 'absolute',
                   top: 0,
                   left: 0,
                   width: '100%',
                   height: '100%',
-                  objectFit: 'cover', // Faz a imagem cobrir todo o espaço sem distorcer
-                  zIndex: 0, // Garante que a imagem fique atrás do texto
+                  objectFit: 'cover',
+                  zIndex: 0,
+                  filter: 'brightness(0.5)',
                 }}
               />
             )}
-            <div 
-              style={{
-                position: 'relative', // Conteúdo sobreposto à imagem
-                zIndex: 1, // Garante que o texto fique acima da imagem
-                padding: '0 20px', // Padding para o conteúdo de texto
-                maxWidth: '80%', // Limita a largura do texto para melhor leitura
-                margin: '0 auto',
-              }}
-            >
+            <div style={{ position: 'relative', zIndex: 1, maxWidth: '80%' }}>
               <h2
                 style={{
-                  fontSize: 'clamp(1.8rem, 4vw, 3rem)', // Aumentei um pouco o tamanho
+                  fontSize: 'clamp(2rem, 4vw, 3rem)',
                   marginBottom: '15px',
-                  color: 'white', // Texto branco para contraste com a imagem
-                  textShadow: '2px 2px 4px rgba(0,0,0,0.7)', // Sombra para o texto melhorar a legibilidade
+                  textShadow: '2px 2px 8px rgba(0,0,0,0.7)',
                 }}
               >
                 {slide.title}
               </h2>
               <p
                 style={{
-                  fontSize: 'clamp(1.1rem, 2.5vw, 1.4rem)', // Aumentei um pouco o tamanho
-                  color: 'white', // Texto branco
+                  fontSize: 'clamp(1.1rem, 2.5vw, 1.4rem)',
                   lineHeight: 1.6,
-                  textShadow: '1px 1px 3px rgba(0,0,0,0.6)', // Sombra para o texto
+                  textShadow: '1px 1px 6px rgba(0,0,0,0.6)',
                 }}
               >
                 {slide.message}
@@ -140,67 +130,57 @@ const WelcomePanel: React.FC = () => {
         ))}
       </div>
 
-      {/* Botões de navegação */}
-      <button
-        onClick={prevSlide}
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: '20px',
-          transform: 'translateY(-50%)',
-          padding: '10px 15px',
-          fontSize: '1.2rem', // Aumentei um pouco o tamanho dos botões
-          borderRadius: '8px',
-          border: 'none',
-          cursor: 'pointer',
-          backgroundColor: 'rgba(0, 0, 0, 0.5)', // Fundo semitransparente
-          color: 'white',
-          zIndex: 2, // Garante que os botões fiquem acima de tudo
-        }}
-      >
-        ◀
-      </button>
-      <button
-        onClick={nextSlide}
-        style={{
-          position: 'absolute',
-          top: '50%',
-          right: '20px',
-          transform: 'translateY(-50%)',
-          padding: '10px 15px',
-          fontSize: '1.2rem', // Aumentei um pouco o tamanho dos botões
-          borderRadius: '8px',
-          border: 'none',
-          cursor: 'pointer',
-          backgroundColor: 'rgba(0, 0, 0, 0.5)', // Fundo semitransparente
-          color: 'white',
-          zIndex: 2, // Garante que os botões fiquem acima de tudo
-        }}
-      >
-        ▶
-      </button>
+      {/* Botões */}
+      <button onClick={prevSlide} style={buttonStyle(true)}>◀</button>
+      <button onClick={nextSlide} style={buttonStyle(false)}>▶</button>
 
       {/* Indicadores */}
-      <div style={{ marginTop: '20px', position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 2 }}>
+      <div style={indicatorContainerStyle}>
         {slides.map((_, index) => (
           <span
             key={index}
             onClick={() => setCurrentSlide(index)}
             style={{
               display: 'inline-block',
-              width: '12px',
-              height: '12px',
-              margin: '0 5px',
+              width: currentSlide === index ? 16 : 12,
+              height: currentSlide === index ? 16 : 12,
               borderRadius: '50%',
-              backgroundColor: currentSlide === index ? '#1777af' : 'rgba(255, 255, 255, 0.5)', // Cor azul do tema ou branco transparente
+              backgroundColor: currentSlide === index ? '#1777af' : 'rgba(255,255,255,0.5)',
               cursor: 'pointer',
-              transition: 'background-color 0.3s',
+              transition: 'all 0.3s ease',
             }}
           />
         ))}
       </div>
     </section>
   );
+};
+
+// Estilos dos botões
+const buttonStyle = (isLeft: boolean): React.CSSProperties => ({
+  position: 'absolute',
+  top: '50%',
+  [isLeft ? 'left' : 'right']: '15px',
+  transform: 'translateY(-50%)',
+  padding: '10px 15px',
+  fontSize: '1.4rem',
+  borderRadius: '50%',
+  border: 'none',
+  cursor: 'pointer',
+  backgroundColor: 'rgba(0,0,0,0.4)',
+  color: 'white',
+  zIndex: 2,
+});
+
+// Estilo do container de indicadores
+const indicatorContainerStyle: React.CSSProperties = {
+  position: 'absolute',
+  bottom: '15px',
+  left: '50%',
+  transform: 'translateX(-50%)',
+  display: 'flex',
+  gap: '10px',
+  zIndex: 2,
 };
 
 export default WelcomePanel;
