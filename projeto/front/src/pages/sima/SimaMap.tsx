@@ -117,13 +117,13 @@ const getPrecipitacaoStyle = (mm: number) => {
     color = "#FF4500";
     radius = 12;
   } else if (mm > 20) {
-    color = "#00CED1";
+    color = "#ff9100ff";
     radius = 9;
   } else if (mm > 0) {
-    color = "#ADD8E6";
+    color = "#fbff00ff";
     radius = 6;
   } else {
-    color = "#CCCCCC";
+    color = "#00ff00ff";
     radius = 5;
   }
 
