@@ -83,7 +83,7 @@ Para a versão **detalhada**, com todas as User Stories e critérios de aceite c
 ## 🚀 Sprint 1
 
 ### 🎯 Objetivo
-Estruturar a base do projeto e iniciar a configuração do ambiente de desenvolvimento.
+Ajustes de visualização de dados e de estilo e desenvolvimento de mapas.
 
 ### 📅 Período
 16/09/2025 a 06/10/2025
@@ -207,6 +207,7 @@ O **Sprint Backlog** abaixo mostra as histórias selecionadas para esta sprint.
 
 ### 📉 Gráfico Burndown
 ![Burndown Sprint 1](/docs/#######)  
+
 
 
 
