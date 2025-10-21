@@ -144,6 +144,70 @@ O **Sprint Backlog** abaixo mostra as histórias selecionadas para esta sprint.
 ### 📉 Gráfico Burndown
 ![Burndown Sprint 1](/docs/sprint-1/burndown.png.png)  
 
+<br>
+<br>
+---
+## 🚀 Sprint 2
+
+### 🎯 Objetivo
+Estruturar a base do projeto e iniciar a configuração do ambiente de desenvolvimento.
+
+### 📅 Período
+//2025 a //2025
+
+### 📋 Sprint Backlog
+
+O **Sprint Backlog** abaixo mostra as histórias selecionadas para esta sprint.  
+
+| ID   | História / Tarefa                                | Prioridade | Pontos | Status        | Critérios de Aceite (Resumo) |
+|------|-------------------------------------------------|------------|--------|---------------|------------------------------|
+| US04 | Tabela interativa (continuação)                              | Alta       | 8      | Finalizar       | Dados exibidos corretamente; filtros funcionando |
+| US05 | Identidade visual e responsividade (ajustes de estilo)              | Alta       | 3      | A fazer       | Interface clara e responsiva |
+| US06 |  Mapa interativo com pontos/polígonos            | Alta       | 8      | Finalizar       | Dados exibidos corretamente |
+| US08 | Usabilidade e performance  (continuação)                      | Alta       | 5      | A fazer       | Carregamento rápido; navegação intuitiva |
+| US09 | Informação sobre os dados (seção + tooltips)  Projeto Sima  | Média      | 5      | A fazer       | Usuário entende origem e significado dos dados |
+| US09 | Informação sobre os dados (seção + tooltips)  Projeto Furnas   | Média      | 5      | A fazer       | Usuário entende origem e significado dos dados |
+| US09 | Informação sobre os dados (seção + tooltips)  Projeto Balcar  | Média      | 5      | A fazer       | Usuário entende origem e significado dos dados |
+| US13 | Endpoint séries temporais  (continuação)                      | Média       | 3      | A fazer       | JSON retornado corretamente; front-end não trava |
+
+
+### 🔍 Sprint Review
+- **Data:** //2025  
+- **Formato:** Vídeo  
+
+### ✅ O que deu certo
+-   
+- 
+-  
+
+### ⚠️ Pontos a melhorar
+-   
+-   
+-   
+
+
+### 🎲 Planning Poker  
+## 🚀 Sprint Backlog – Sprint Atual (Resumo de Complexidade)
+
+| ID   | História / Tarefa                               | Pontos |
+|------|-------------------------------------------------|------------|
+| US04 | Tabela interativa (continuação)                 | 8      | 
+| US05 | Identidade visual e responsividade (ajustes de estilo)b | 3      | 
+| US06 |  Mapa interativo com pontos/polígonos         | 8      | 
+| US08 | Usabilidade e performance  (continuação)      | 5      | 
+| US09 | Informação sobre os dados (seção + tooltips)  Projeto Sima    | 5      | 
+| US09 | Informação sobre os dados (seção + tooltips)  Projeto Furnas  | 5      | 
+| US09 | Informação sobre os dados (seção + tooltips)  Projeto Balcar  | 5      | 
+| US13 | Endpoint séries temporais  (continuação)                      | 3      | 
+
+
+
+#### Complexidade total da Sprint: Alta
+#### Quantidade de histórias planejadas: 9
+#### Total de pontos: 43
+
+### 📉 Gráfico Burndown
+![Burndown Sprint 1](/docs/#######)  
 
 
 
