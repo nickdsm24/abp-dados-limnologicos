@@ -144,8 +144,7 @@ O **Sprint Backlog** abaixo mostra as histórias selecionadas para esta sprint.
 ### 📉 Gráfico Burndown
 ![Burndown Sprint 1](/docs/sprint-1/burndown.png.png)  
 
-<br>
-<br>
+
 ---
 ## 🚀 Sprint 2
 
@@ -208,6 +207,7 @@ O **Sprint Backlog** abaixo mostra as histórias selecionadas para esta sprint.
 
 ### 📉 Gráfico Burndown
 ![Burndown Sprint 1](/docs/#######)  
+
 
 
 
