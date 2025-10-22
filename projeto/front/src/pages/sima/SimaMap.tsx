@@ -63,7 +63,7 @@ const formatNameForImageKey = (name: string): string => {
   }
 
   return formattedName;
-};  
+}; 	
 
 interface ApiResponse<T> {
   success: boolean;
@@ -137,6 +137,10 @@ const SimaMap: React.FC = () => {
   const [estacoes, setEstacoes] = useState<Estacao[]>([]);
   const [simaRegistros, setSimaRegistros] = useState<SimaRegistro[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const [selectedEstacaoId, setSelectedEstacaoId] = useState<
+    string | "all"
+  >("all");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -185,6 +189,32 @@ const SimaMap: React.FC = () => {
       ultimaPrecipitacao: lastPrecipitacaoMap.get(estacao.idestacao) ?? 0,
     }));
   }, [estacoes, simaRegistros]);
+  
+  const filteredEstacoes = useMemo(() => {
+    if (selectedEstacaoId === "all") {
+      return estacoesComPrecipitacao;
+    }
+
+    return estacoesComPrecipitacao.filter(
+      (e) => e.idestacao === selectedEstacaoId
+    );
+  }, [selectedEstacaoId, estacoesComPrecipitacao]);
+
+  const mapSettings = useMemo(() => {
+    if (filteredEstacoes.length === 1) {
+      const estacao = filteredEstacoes[0];
+      if (estacao.lat && estacao.lng) {
+        return {
+          center: [estacao.lat, estacao.lng] as [number, number],
+          zoom: 12,
+        };
+      }
+    }
+    return {
+      center: INITIAL_CENTER,
+      zoom: INITIAL_ZOOM,
+    };
+  }, [filteredEstacoes]);
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
@@ -200,10 +230,35 @@ const SimaMap: React.FC = () => {
       <h1 className="text-3xl font-bold mb-4" style={{ color: colorsSima.primary }}>
         Mapa de Monitoramento - Projeto SIMA
       </h1>
+      
+      <div className="mb-4">
+        <label
+          htmlFor="estacao-select"
+          className="block text-sm font-medium text-gray-700"
+        >
+          Filtrar por Estação:
+        </label>
+        <select
+          id="estacao-select"
+          value={selectedEstacaoId}
+          onChange={(e) => setSelectedEstacaoId(e.target.value)}
+          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+          style={{ borderColor: colorsSima.primary, borderWidth: "1px" }}
+        >
+          <option value="all">Mostrar Todas</option>
+          {estacoes
+            .sort((a, b) => a.rotulo.localeCompare(b.rotulo))
+            .map((estacao) => (
+              <option key={estacao.idestacao} value={estacao.idestacao}>
+                {estacao.rotulo}
+              </option>
+            ))}
+        </select>
+      </div>
 
       <MapContainer
-        center={INITIAL_CENTER}
-        zoom={INITIAL_ZOOM}
+        center={mapSettings.center}
+        zoom={mapSettings.zoom}
         scrollWheelZoom={true}
         style={{ height: "100%", width: "100%", borderRadius: "12px" }}
       >
@@ -212,7 +267,7 @@ const SimaMap: React.FC = () => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {estacoesComPrecipitacao.map(
+        {filteredEstacoes.map(
           (estacao) =>
             estacao.lat &&
             estacao.lng && (
@@ -255,7 +310,7 @@ const SimaMap: React.FC = () => {
             ),
         )}
 
-        {estacoesComPrecipitacao.map((estacao) => {
+        {filteredEstacoes.map((estacao) => {
           const precipitacao = estacao.ultimaPrecipitacao ?? 0;
           const { color, radius } = getPrecipitacaoStyle(precipitacao);
 
