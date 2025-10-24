@@ -9,7 +9,7 @@ export default function About() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F3F7FB] p-6">
+    <div className="mb-30 bg-opacity-0 p-6">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">

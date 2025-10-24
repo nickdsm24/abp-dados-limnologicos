@@ -1,229 +1,178 @@
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight, LoaderCircle, ServerCrash, Table, Search } from 'lucide-react';
-import { useTableData } from '../../hooks/useTableData';
-import { type DatabaseName } from '../../api/api';
+// src/components/commons/DataTable.tsx 
+import { Loader2, AlertCircle, Table2 } from 'lucide-react';
+import type { 
+  DataType, 
+  PaginacaoState, 
+  DatabaseName 
+} from '../../types/types'; // Ajuste o caminho
 
 interface DataTableProps {
   database: DatabaseName;
   tableName: string;
+  dados: DataType;
+  colunas: string[];
+  loading: boolean;
+  error: string | null;
+  paginacao: PaginacaoState;
+  onPageChange: (newPage: number) => void;
 }
 
-function DataTable({ database, tableName }: DataTableProps) {
-  const [paginaAtual, setPaginaAtual] = useState<number>(1);
-  const [filtrosAtivos, setFiltrosAtivos] = useState({});
-  const [filtrosForm, setFiltrosForm] = useState({
-    animal: '',
-    candy: '',
-    money: '',
-  });
+export default function DataTable({
+  tableName,
+  dados,
+  colunas,
+  loading,
+  error,
+  paginacao,
+  onPageChange
+}: DataTableProps) {
 
-  const { dados, colunas, paginacao, loading, error } = useTableData(
-    database,
-    tableName,
-    paginaAtual,
-    filtrosAtivos
-  );
+  // --- Estados de Feedback (Estilizados) ---
 
-  const formatarNomeColuna = (nome: string): string => {
-    const resultado = nome.replace(/([A-Z])/g, ' $1');
-    return resultado.charAt(0).toUpperCase() + resultado.slice(1);
-  };
-
-  // --- NOVA FUNÇÃO DE RENDERIZAÇÃO (DO COMPONENTE 2) ---
-  // Agora ela recebe também o nome da coluna para formatações específicas.
-  const renderizarCelula = (item: unknown, coluna: string): React.ReactNode => {
-  // 1. Trata valores nulos ou indefinidos
-  if (item === null || item === undefined) {
-    return <span className="text-gray-400 italic">N/A</span>;
-  }
-
-  // 2. Trata arrays
-  if (Array.isArray(item)) {
-    return item.join(', ');
-  }
-
-  // 3. Trata objetos
-  if (typeof item === 'object' && item !== null) {
-    const itemObj = item as Record<string, unknown>;
-
-    // --- Campos/Casos conhecidos e específicos ---
-    if ('nrocampanha' in itemObj) {
-      return String(itemObj.nrocampanha);
-    }
-    if('nroCampanha' in itemObj){
-      return String(itemObj.nroCampanha);
-    }
-    if ('rotulo' in itemObj) {
-      return String(itemObj.rotulo);
-    }
-    if ('descricao' in itemObj) {
-      return String(itemObj.descricao);
-    }
-    if ('nome' in itemObj) {
-      return String(itemObj.nome);
-    }
-
-    // --- Fallback genérico ---
-    // Caso o objeto não tenha propriedades conhecidas, tenta encontrar um campo "visível".
-    // Isso evita mostrar JSON cru no front.
-    const visibleKey = Object.keys(itemObj).find(
-      (k) =>
-        k.toLowerCase().includes('nro') ||
-        k.toLowerCase().includes('nome') ||
-        k.toLowerCase().includes('rotulo') ||
-        k.toLowerCase().includes('descricao')
-    );
-
-    if (visibleKey && typeof itemObj[visibleKey] === 'string') {
-      return itemObj[visibleKey] as string;
-    }
-
-    // --- Caso nada legível seja encontrado ---
+  if (loading) {
     return (
-      <pre className="text-xs bg-gray-100 p-1 rounded whitespace-pre-wrap">
-        {JSON.stringify(item, null, 2)}
-      </pre>
-    );
-  }
-
-  // 4. Trata datas (fora do bloco anterior)
-  if (
-    (coluna.includes('data') ||
-      coluna.includes('date') ||
-      coluna.endsWith('At')) &&
-    typeof item === 'string'
-  ) {
-    const data = new Date(item);
-    if (!isNaN(data.getTime())) {
-      return data.toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    }
-  }
-
-  // 5. Valor padrão: converte para string
-  return String(item);
-};
-
-  const handleFiltroChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFiltrosForm(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleAplicarFiltros = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPaginaAtual(1);
-    setFiltrosAtivos(filtrosForm);
-  };
-  
-  const handlePaginaAnterior = () => {
-    setPaginaAtual((prev) => Math.max(prev - 1, 1));
-  };
-  
-  const handlePaginaProxima = () => {
-    setPaginaAtual((prev) => Math.min(prev + 1, paginacao.totalPages));
-  };
-  
-  return (
-    <div className="bg-[#F3F7FB] p-4 sm:p-6 lg:p-8" style={{ minHeight: 'calc(100vh)' }}>
-      <div className="max-w-7xl mx-auto">
-        
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 capitalize">
-            Tabela: {tableName.replace('-', ' ')}
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Exibindo dados do banco: <span className="font-semibold">{database}</span>
-          </p>
-        </header>
-
-        <form onSubmit={handleAplicarFiltros} className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
-              <div>
-                <label htmlFor="animal" className="block text-sm font-medium text-gray-700">Animal</label>
-                <input type="text" id="animal" name="animal" value={filtrosForm.animal} onChange={handleFiltroChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"/>
-              </div>
-              {/* Adicione outros filtros aqui conforme necessário */}
-              <button type="submit" className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-[#1777af] rounded-md hover:bg-opacity-90 h-10">
-                <Search className="w-4 h-4 mr-2" /> Aplicar Filtros
-              </button>
-          </div>
-        </form>
-
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          {loading && (
-            <div className="flex flex-col items-center justify-center p-12 text-[#1777af]">
-              <LoaderCircle className="animate-spin h-10 w-10 mb-4" />
-              <p className="text-lg font-semibold">Carregando dados...</p>
-            </div>
-          )}
-
-          {error && !loading && (
-            <div className="flex flex-col items-center justify-center p-12 text-red-600">
-              <ServerCrash className="h-10 w-10 mb-4" />
-              <p className="text-lg font-semibold">Ocorreu um Erro</p>
-              <p className="text-sm">{error}</p>
-            </div>
-          )}
-
-          {!loading && !error && dados.length === 0 && (
-            <div className="flex flex-col items-center justify-center p-12 text-gray-500">
-              <Table className="h-10 w-10 mb-4" />
-              <p className="text-lg font-semibold">Nenhum dado encontrado.</p>
-              <p className="text-sm mt-1">Tente ajustar os filtros ou selecione outra tabela.</p>
-            </div>
-          )}
-          
-          {!loading && !error && dados.length > 0 && (
-            <>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left text-gray-700">
-                  <thead className="text-xs text-white uppercase bg-[#1777af]">
-                    <tr>
-                      {colunas.map((col) => (
-                        <th key={col} scope="col" className="px-6 py-3">{formatarNomeColuna(col)}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dados.map((item, index) => (
-                      <tr key={typeof item.id === 'string' || typeof item.id === 'number' ? item.id : index} className="bg-white border-b hover:bg-[#F3F7FB]">
-                        {colunas.map((col) => (
-                          <td key={col} className="px-6 py-4 whitespace-nowrap">
-                            {/* --- AJUSTE NA CHAMADA DA FUNÇÃO --- */}
-                            {/* Passamos o nome da coluna para a função */}
-                            {renderizarCelula(item[col], col)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 border-t border-gray-200">
-                <span className="text-sm text-gray-700">
-                  Página <span className="font-semibold">{paginacao.page}</span> de <span className="font-semibold">{paginacao.totalPages}</span> ({paginacao.total} registros)
-                </span>
-                <div className="inline-flex items-center space-x-2">
-                  <button onClick={handlePaginaAnterior} disabled={paginaAtual === 1} className="flex items-center justify-center px-3 h-8 text-sm font-medium text-white bg-[#1777af] rounded-l-md disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-opacity-90">
-                    <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
-                  </button>
-                  <button onClick={handlePaginaProxima} disabled={paginaAtual === paginacao.totalPages || paginacao.totalPages === 0} className="flex items-center justify-center px-3 h-8 text-sm font-medium text-white bg-[#1777af] rounded-r-md disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-opacity-90">
-                    Próxima <ChevronRight className="w-4 h-4 ml-1" />
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
+      <div className="p-4">
+        <div className="flex flex-col items-center justify-center h-80 bg-white rounded-xl shadow-lg border border-gray-200">
+          {/* Cor do ícone atualizada para o tema "mar" */}
+          <Loader2 className="animate-spin text-cyan-600" size={40} />
+          <p className="mt-3 text-lg font-medium text-gray-700">Carregando dados...</p>
         </div>
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4">
+        <div className="flex flex-col items-center justify-center h-80 bg-white rounded-xl shadow-lg border border-red-200 text-red-600">
+          <AlertCircle size={40} />
+          <p className="mt-3 text-lg font-semibold">Erro ao carregar dados</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!dados || dados.length === 0) {
+    return (
+      <div className="p-4">
+        <div className="flex flex-col items-center justify-center h-80 bg-white rounded-xl shadow-lg border border-gray-200 text-gray-500">
+          <Table2 size={40} />
+          <p className="mt-3 text-lg font-semibold">Nenhum dado encontrado</p>
+          <p className="text-sm">Nenhum registro corresponde aos filtros para a tabela "{tableName}".</p>
+        </div>
+      </div>
+    );
+  }
+
+  // --- Renderização da Tabela (Estilizada) ---
+  return (
+    <div className="p-4">
+      {/* 1. Wrapper com cantos arredondados e overflow hidden */}
+      <div className="overflow-hidden bg-white rounded-xl shadow-lg border border-gray-200">
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            
+            {/* 2. Cabeçalho azul-mar com texto branco */}
+            <thead className="bg-cyan-700">
+              <tr>
+                {colunas.map((coluna) => (
+                  <th
+                    key={coluna}
+                    scope="col"
+                    className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider"
+                  >
+                    {coluna.replace(/_/g, ' ')}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+
+            {/* 3. Corpo com linhas "zebra" (cor sim, cor não) */}
+            <tbody className="bg-white">
+              {dados.map((row, rowIndex) => (
+                <tr 
+                  key={rowIndex} 
+                  className="odd:bg-white even:bg-sky-50 hover:bg-sky-100 transition-colors duration-150"
+                >
+                  {colunas.map((coluna) => (
+                    <td 
+                      key={`${rowIndex}-${coluna}`} 
+                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 border-t border-gray-200"
+                    >
+                      {String(row[coluna] ?? '')}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 4. Paginação com cantos arredondados */}
+      <Pagination 
+        paginacao={paginacao}
+        onPageChange={onPageChange}
+      />
     </div>
   );
 }
 
-export default DataTable;
+// --- Componente de Paginação (Estilizado) ---
+
+interface PaginationProps {
+  paginacao: PaginacaoState;
+  onPageChange: (newPage: number) => void;
+}
+
+function Pagination({ paginacao, onPageChange }: PaginationProps) {
+  const { page, totalPages, total } = paginacao;
+
+  const handlePrevious = () => {
+    if (page > 1) {
+      onPageChange(page - 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (page < totalPages) {
+      onPageChange(page + 1);
+    }
+  };
+
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-between mt-4 px-2">
+      <div className="text-sm text-gray-700">
+        Total de <span className="font-semibold text-gray-900">{total}</span> registros
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={handlePrevious}
+          disabled={page === 1}
+          className="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-lg bg-white 
+                     hover:bg-gray-50 
+                     disabled:opacity-50 disabled:bg-gray-50 disabled:cursor-not-allowed
+                     transition-colors"
+        >
+          Anterior
+        </button>
+        <span className="text-sm text-gray-700">
+          Página <span className="font-semibold text-gray-900">{page}</span> de <span className="font-semibold text-gray-900">{totalPages}</span>
+        </span>
+        <button
+          onClick={handleNext}
+          disabled={page === totalPages}
+          className="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-lg bg-white 
+                     hover:bg-gray-50 
+                     disabled:opacity-50 disabled:bg-gray-50 disabled:cursor-not-allowed
+                     transition-colors"
+        >
+          Próxima
+        </button>
+      </div>
+    </div>
+  );
+}

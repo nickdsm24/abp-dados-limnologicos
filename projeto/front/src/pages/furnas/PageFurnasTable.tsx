@@ -1,7 +1,14 @@
-import { useState } from 'react';
+// FurnasTablePage.tsx (MODIFICADO)
+import { useState, useMemo } from 'react'; // 1. Importar useMemo
 import { Menu } from '../../components/commons/TableMenu';
 import DataTable from '../../components/commons/DataTable';
 import { Placeholder } from '../../components/commons/TablePlaceholder';
+import { FilterBar } from '../../components/Filters/FilterBar';
+import { useTableData } from '../../hooks/useTableData';
+import { ModalExport } from '../../components/Export/ModalExport'; // 2. Importar o Modal
+
+// 3. Importar os tipos necessários
+import type { FilterParams, ColumnInfo, ColumnType } from '../../types/types'; 
 
 // --- LISTA DE TABELAS DISPONÍVEIS PARA FURNAS (COMPLETA E ORDENADA) ---
 const tabelasDisponiveis = [
@@ -43,30 +50,109 @@ const tabelasDisponiveis = [
 ];
 
 export function FurnasTablePage() {
-  // Este estado controla qual tabela está ativa na aplicação inteira
   const [tabelaAtiva, setTabelaAtiva] = useState<string | null>(null);
+  const [filters, setFilters] = useState<FilterParams>({});
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  
+  // 4. Adicionar estado para o modal de exportação
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Hook principal de busca de dados
+  const { dados, colunas, paginacao, loading, error } = useTableData(
+    'furnas',
+    tabelaAtiva,
+    currentPage,
+    filters
+  );
+
+  // 5. LÓGICA DO PASSO 2: Gerar colunasDisponiveis com useMemo
+  const colunasDisponiveis = useMemo((): ColumnInfo[] => {
+    // Pega a primeira linha de dados com segurança (pode ser undefined)
+    const firstRow = dados?.[0];
+
+    // Mapeia o array de 'colunas' (strings) para 'ColumnInfo' (objetos)
+    return colunas.map(coluna => {
+      
+      // Lógica de inferência de tipo
+      let tipo: ColumnType = 'unknown';
+
+      if (coluna.toLowerCase().startsWith('data')) {
+        tipo = 'date';
+      } else if (coluna.toLowerCase().startsWith('hora')) {
+        tipo = 'time';
+      } else if (firstRow && typeof firstRow[coluna] === 'number') {
+        // Se temos dados, checamos o tipo do primeiro registro
+        tipo = 'number';
+      } else {
+        // Caso contrário, assumimos string (ou se firstRow não existir)
+        tipo = 'string';
+      }
+      
+      return {
+        name: coluna,
+        type: tipo,
+      };
+    });
+  }, [colunas, dados]); // Depende de 'colunas' e 'dados'
+
+  const handleSelectTabela = (novaTabela: string) => {
+    setTabelaAtiva(novaTabela);
+    setFilters({});
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
 
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Menu Lateral */}
       <Menu 
+        database='furnas'
         tabelas={tabelasDisponiveis}
         tabelaAtiva={tabelaAtiva}
-        onSelectTabela={setTabelaAtiva}
+        onSelectTabela={handleSelectTabela}
       />
 
-      {/* Área de Conteúdo Principal */}
       <main className="flex-1 overflow-y-auto">
         {tabelaAtiva ? (
-          // Se uma tabela está ativa, renderiza o DataTable,
-          // informando a ele QUAL BANCO e QUAL TABELA usar.
-          <DataTable 
-            database="furnas" 
-            tableName={tabelaAtiva} 
-          />
+          <>
+            {/* 6. Passar as novas props para o FilterBar */}
+            <FilterBar 
+              key={tabelaAtiva}
+              onApplyFilters={setFilters}
+              onClearFilters={() => setFilters({})}
+              onExportClick={() => setIsModalOpen(true)} // Prop para abrir o modal
+              colunasDisponiveis={colunasDisponiveis}  // Prop do Passo 2
+            />
+
+            <DataTable 
+              database="furnas" 
+              tableName={tabelaAtiva} 
+              dados={dados}
+              colunas={colunas}
+              loading={loading}
+              error={error}
+              paginacao={paginacao}
+              onPageChange={handlePageChange}
+            />
+          </>
         ) : (
-          // Caso contrário, renderiza o placeholder
           <Placeholder />
+        )}
+
+        {/* 7. Renderizar o Modal (controlado pela página) */}
+        {/* Usamos 'tabelaAtiva &&' para garantir que não seja null */}
+        {tabelaAtiva && (
+          <ModalExport
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            database="furnas"
+            tableName={tabelaAtiva}
+            currentFilters={filters}
+            totalRecords={paginacao.total}
+            pageRecords={dados.length}
+          />
         )}
       </main>
     </div>
