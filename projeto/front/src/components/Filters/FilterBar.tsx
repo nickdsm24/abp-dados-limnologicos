@@ -1,43 +1,73 @@
-// src/components/commons/FilterBar.tsx
+// src/components/commons/Filters/FilterBar.tsx
 import { useState } from 'react';
-import { Plus, Trash, Search, X } from 'lucide-react';
-// 1. Importar o tipo que define os filtros
-import type { FilterParams } from '../../types/types'; // Ajuste o caminho se necessário
+import {
+  Plus, Trash, Search, X, Download,
+  Calendar, Clock, Hash, Type as IconType, Info
+} from 'lucide-react';
+import type { FilterParams, ColumnInfo, ColumnType } from '../../types/types'; // Ajuste o caminho
 
-// 2. Definir a interface para as props do componente
+// --- Interfaces (Sem alteração de lógica) ---
+
 interface FilterBarProps {
   onApplyFilters: (filters: FilterParams) => void;
   onClearFilters: () => void;
+  onExportClick: () => void;
+  colunasDisponiveis: ColumnInfo[];
 }
 
-// 3. Definir a interface para uma única linha de filtro no estado local
 interface FilterRow {
   id: number;
   column: string;
-  value: string; // O valor do input é sempre string
+  type: ColumnType;
+  value: string;
+  valueEnd?: string;
 }
 
-// Hook para gerar IDs únicos
 let filterIdCounter = 0;
 const useUniqueId = () => {
   return () => filterIdCounter++;
 };
 
-export function FilterBar({ onApplyFilters, onClearFilters }: FilterBarProps) {
-  // 4. Tipar o estado
+export function FilterBar({
+  onApplyFilters,
+  onClearFilters,
+  onExportClick,
+  colunasDisponiveis
+}: FilterBarProps) {
+
   const [filterRows, setFilterRows] = useState<FilterRow[]>([]);
   const getNextId = useUniqueId();
 
+  // --- Lógica de Handlers (Sem alteração) ---
+
   const addFilterRow = () => {
-    setFilterRows([...filterRows, { id: getNextId(), column: '', value: '' }]);
+    setFilterRows([
+      ...filterRows,
+      { id: getNextId(), column: '', type: 'unknown', value: '', valueEnd: '' }
+    ]);
   };
 
-  // 5. Tipar os argumentos das funções
   const removeFilterRow = (id: number) => {
     setFilterRows(filterRows.filter((row) => row.id !== id));
   };
 
-  const updateFilterRow = (id: number, field: 'column' | 'value', newValue: string) => {
+  const handleColumnChange = (id: number, selectedColumn: string) => {
+    const colInfo = colunasDisponiveis.find(c => c.name === selectedColumn);
+    const newType = colInfo?.type || 'unknown';
+    setFilterRows(
+      filterRows.map((row) =>
+        row.id === id
+          ? { ...row, column: selectedColumn, type: newType, value: '', valueEnd: '' }
+          : row
+      )
+    );
+  };
+
+  const handleValueChange = (
+    id: number,
+    field: 'value' | 'valueEnd',
+    newValue: string
+  ) => {
     setFilterRows(
       filterRows.map((row) =>
         row.id === id ? { ...row, [field]: newValue } : row
@@ -46,17 +76,16 @@ export function FilterBar({ onApplyFilters, onClearFilters }: FilterBarProps) {
   };
 
   const handleApply = () => {
-    // 6. Tipar o acumulador do reduce
     const formattedFilters = filterRows.reduce((acc: FilterParams, row) => {
-      // Só inclui filtros que tenham coluna e valor preenchidos
-      if (row.column && row.value) {
-        // O tipo FilterParams aceita string | number.
-        // O valor do input (string) é compatível.
-        acc[row.column] = row.value;
+      if (!row.column || row.type === 'unknown') return acc;
+      if (row.type === 'string') {
+        if (row.value) acc[row.column] = row.value;
+      } else if (row.type === 'number' || row.type === 'date' || row.type === 'time') {
+        if (row.value) acc[`${row.column}_gte`] = row.value;
+        if (row.valueEnd) acc[`${row.column}_lte`] = row.valueEnd;
       }
       return acc;
     }, {});
-    
     onApplyFilters(formattedFilters);
   };
 
@@ -65,76 +94,237 @@ export function FilterBar({ onApplyFilters, onClearFilters }: FilterBarProps) {
     onClearFilters();
   };
 
+  // --- Lógica de Renderização (Refatorada) ---
   return (
-    <div className="p-4 bg-white border-b border-gray-200 shadow-sm">
-      <div className="flex justify-between items-center mb-3">
-        <h3 className="text-lg font-semibold text-gray-700">Filtros</h3>
-        <button
-          onClick={addFilterRow}
-          className="flex items-center px-3 py-1.5 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-        >
-          <Plus size={16} className="mr-1" />
-          Adicionar Filtro
-        </button>
+    <div className="p-5 bg-sky-50 border-b border-gray-200 shadow-lg font-sans">
+      {/* Cabeçalho */}
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-semibold text-sky-900">Filtros</h3>
+        <div className="flex items-center gap-3">
+          {/* Botão Exportar (Estilo "Mar" Secundário) */}
+          <button
+            onClick={onExportClick}
+            className="flex items-center py-2 px-4 text-sm font-medium text-cyan-700 bg-white border border-cyan-600 rounded-lg shadow-sm 
+                       transition-all transform hover:scale-105 hover:bg-cyan-50 
+                       focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-opacity-50"
+          >
+            <Download size={16} className="mr-1.5" />
+            Exportar Dados
+          </button>
+          {/* Botão Adicionar Filtro (Estilo "Mar" Primário) */}
+          <button
+            onClick={addFilterRow}
+            className="flex items-center py-2 px-4 text-sm font-medium text-white bg-cyan-600 rounded-lg shadow-sm 
+                       transition-all transform hover:scale-105 hover:bg-cyan-700 
+                       focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-opacity-50"
+          >
+            <Plus size={18} className="mr-1" />
+            Adicionar Filtro
+          </button>
+        </div>
       </div>
 
+      {/* Lista de Filtros */}
       <div className="space-y-3">
         {filterRows.length === 0 && (
-          <p className="text-sm text-gray-500">Nenhum filtro aplicado.</p>
+          // Texto Padrão Amigável
+          <div className="text-center p-4 border border-dashed border-sky-300 rounded-lg bg-white">
+            <Info size={18} className="mx-auto text-sky-500 mb-2" />
+            <p className="font-medium text-sky-800">Nenhum filtro aplicado</p>
+            <p className="text-sm text-sky-600">
+              Clique em "Adicionar Filtro" acima para começar a refinar seus dados.
+            </p>
+          </div>
         )}
 
         {filterRows.map((row) => (
-          <div key={row.id} className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder="Nome da Coluna (ex: sitio)"
+          <div key={row.id} className="flex items-center gap-2 p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
+            
+            <select
               value={row.column}
-              // 7. Tipar o evento onChange
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                updateFilterRow(row.id, 'column', e.target.value)
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                handleColumnChange(row.id, e.target.value)
               }
-              className="form-input flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
-            <span className="text-gray-500">=</span>
-            <input
-              type="text"
-              placeholder="Valor (ex: Ponto 1)"
-              value={row.value}
-              // 7. Tipar o evento onChange
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                updateFilterRow(row.id, 'value', e.target.value)
+              className="form-select w-1/3 px-3 py-2 text-sm border border-gray-300 rounded-lg shadow-sm 
+                         focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+            >
+              <option value="" disabled>Selecione uma coluna...</option>
+              {colunasDisponiveis.map((col) => (
+                <option key={col.name} value={col.name}>
+                  {col.name.toUpperCase()}
+                </option>
+              ))}
+            </select>
+
+            <RenderValorInputs
+              row={row}
+              onChange={(field, newValue) =>
+                handleValueChange(row.id, field, newValue)
               }
-              className="form-input flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             />
+
+            {/* Botão Lixeira (Estilizado) */}
             <button
               onClick={() => removeFilterRow(row.id)}
-              className="p-2 text-gray-500 hover:text-red-600 rounded-full hover:bg-gray-100"
+              className="p-2 text-red-500 rounded-full 
+                         transition-all transform hover:scale-110 hover:bg-red-600 hover:text-white"
               aria-label="Remover filtro"
             >
-              <Trash size={16} />
+              <Trash size={18} />
             </button>
           </div>
         ))}
       </div>
 
+      {/* Botões Aplicar e Limpar (Estilizados) */}
       {filterRows.length > 0 && (
         <div className="flex gap-3 mt-4">
           <button
             onClick={handleApply}
-            className="flex items-center px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
+            className="flex items-center py-2 px-4 text-sm font-medium text-white bg-green-600 rounded-lg shadow-md 
+                       transition-all transform hover:scale-105 hover:bg-green-700 
+                       focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
           >
-            <Search size={16} className="mr-1" />
-            Aplicar
+            <Search size={16} className="mr-1.5" />
+            Aplicar Filtros
           </button>
           <button
             onClick={handleClear}
-            className="flex items-center px-4 py-2 text-sm font-medium bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
+            className="flex items-center py-2 px-4 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-md 
+                       transition-all transform hover:scale-105 hover:bg-gray-50 
+                       focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
           >
-            <X size={16} className="mr-1" />
-            Limpar Filtros
+            <X size={16} className="mr-1.5" />
+            Limpar
           </button>
         </div>
       )}
     </div>
   );
 }
+
+// --- Componente Interno 'RenderValorInputs' ---
+interface RenderValorInputsProps {
+  row: FilterRow;
+  onChange: (field: 'value' | 'valueEnd', newValue: string) => void;
+}
+
+function RenderValorInputs({ row, onChange }: RenderValorInputsProps) {
+  const { type, value, valueEnd } = row;
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value: newValue } = e.target;
+    onChange(name as 'value' | 'valueEnd', newValue);
+  };
+
+  // Componente de Input Estilizado (Atualizado com rounded-lg)
+  const StyledInput: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { icon?: React.ReactNode }> = ({ icon, className, ...props }) => (
+    <div className={`relative flex-1 ${className}`}>
+      {icon && (
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          {icon}
+        </div>
+      )}
+      <input
+        {...props}
+        className={`form-input w-full px-3 py-2 text-sm border border-gray-300 rounded-lg shadow-sm 
+                    focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 
+                    ${icon ? 'pl-9' : ''} ${props.disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+      />
+    </div>
+  );
+
+  switch (type) {
+    case 'string':
+      return (
+        <StyledInput
+          type="text"
+          name="value"
+          value={value}
+          onChange={handleChange}
+          placeholder="Valor (ex: Ponto 1)"
+          icon={<IconType size={14} className="text-gray-400" />}
+        />
+      );
+
+    case 'number':
+      return (
+        <>
+          <StyledInput
+            type="number"
+            name="value"
+            value={value}
+            onChange={handleChange}
+            placeholder="Min"
+            icon={<Hash size={14} className="text-gray-400" />}
+          />
+          <span className="text-gray-500 font-medium">-</span>
+          <StyledInput
+            type="number"
+            name="valueEnd"
+            value={valueEnd ?? ''}
+            onChange={handleChange}
+            placeholder="Max"
+            icon={<Hash size={14} className="text-gray-400" />}
+          />
+        </>
+      );
+      
+    case 'date':
+      return (
+        <>
+          <StyledInput
+            type="date"
+            name="value"
+            value={value}
+            onChange={handleChange}
+            placeholder="Data Início"
+            icon={<Calendar size={14} className="text-gray-400" />}
+          />
+          <span className="text-gray-500 text-sm">até</span>
+          <StyledInput
+            type="date"
+            name="valueEnd"
+            value={valueEnd ?? ''}
+            onChange={handleChange}
+            placeholder="Data Fim"
+            icon={<Calendar size={14} className="text-gray-400" />}
+          />
+        </>
+      );
+      
+    case 'time':
+      return (
+        <>
+          <StyledInput
+            type="time"
+            name="value"
+            value={value}
+            onChange={handleChange}
+            placeholder="Hora Início"
+            icon={<Clock size={14} className="text-gray-400" />}
+          />
+          <span className="text-gray-500 text-sm">até</span>
+          <StyledInput
+            type="time"
+            name="valueEnd"
+            value={valueEnd ?? ''}
+            onChange={handleChange}
+            placeholder="Hora Fim"
+            icon={<Clock size={14} className="text-gray-400" />}
+          />
+        </>
+      );
+
+    default: // 'unknown'
+      return (
+        <StyledInput
+          type="text"
+          placeholder="Selecione uma coluna..."
+          disabled
+        />
+      );
+  }
+}
+
+

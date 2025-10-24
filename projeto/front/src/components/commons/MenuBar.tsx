@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom"; // Assumindo react-router-dom
-import { Menu, X, Waves } from "lucide-react"; // Adicionei Waves para o ícone de marca
+import { Menu, X, Home } from "lucide-react"; // Adicionei Waves para o ícone de marca
 
 // Cores do Projeto:
 // Primary Blue: #1777af
@@ -30,8 +30,8 @@ function MenuBar() {
           
           {/* Logo / Título Principal */}
           <Link to="/" className="flex items-center space-x-2 text-xl font-extrabold text-white hover:text-gray-200 transition-colors">
-            <Waves className="w-6 h-6 text-[#FFA500]" />
-            <span>Dados Limnológicos</span>
+            <Home className="w-6 h-6 text-[#FFA500]" />
+            <span>Página Inicial</span>
           </Link>
 
           {/* Menu Desktop */}

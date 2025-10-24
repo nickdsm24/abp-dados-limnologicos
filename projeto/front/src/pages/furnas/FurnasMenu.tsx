@@ -111,11 +111,8 @@ const HomePage: React.FC = () => {
  ];
 
  return (
-    // CORREÇÃO 3: Trocado 'min-h-screen' para 'bg-gray-50'
-    // O 'min-h-screen' deve estar no AppLayout
   <div className="bg-gray-50">
    {/* Hero */}
-      {/* CORREÇÃO 4: Trocado 'pb-64' (256px) por 'pb-16' (64px) */}
    <div className="pt-24 pb-16 px-12 text-center relative overflow-hidden rounded-b-3xl shadow-xl" style={{ backgroundColor: primaryColor }}>
     <div
      className="absolute inset-0 opacity-10"

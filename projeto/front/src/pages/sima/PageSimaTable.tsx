@@ -1,13 +1,18 @@
 // SimaTablePage.tsx 
-import { useState } from 'react';
+import { useState, useMemo } from 'react'; // 1. Importar useMemo
 import { Menu } from '../../components/commons/TableMenu';
 import DataTable from '../../components/commons/DataTable';
 import { Placeholder } from '../../components/commons/TablePlaceholder';
-// 1. Importar o FilterBar
-import { FilterBar } from '../../components/Filters/FilterBar'; // Ajuste o caminho se necessário
-// 2. Importar o Hook e os Tipos
+import { FilterBar } from '../../components/Filters/FilterBar';
+import { ModalExport } from '../../components/Export/ModalExport'; // 2. Importar ModalExport
 import { useTableData } from '../../hooks/useTableData';
-import type { FilterParams } from '../../types/types'; // Ajuste o caminho se necessário
+// 3. Importar todos os tipos necessários
+import type { 
+  FilterParams, 
+  ColumnInfo, 
+  ColumnType, 
+  DataRow 
+} from '../../types/types'; // Ajuste o caminho
 
 // --- LISTA DE TABELAS DISPONÍVEIS PARA SIMA ---
 const tabelasDisponiveis = [
@@ -20,28 +25,57 @@ const tabelasDisponiveis = [
 
 export function SimaTablePage() {
   const [tabelaAtiva, setTabelaAtiva] = useState<string | null>(null);
-
-  // 3. LEVANTAR O ESTADO: Adicionar estados para filtros e paginação
   const [filters, setFilters] = useState<FilterParams>({});
   const [currentPage, setCurrentPage] = useState<number>(1);
+  // 4. Adicionar estado para o modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // 4. CHAMAR O HOOK AQUI: O pai agora busca os dados
   const { dados, colunas, paginacao, loading, error } = useTableData(
-    'sima', // <-- Database correto
+    'sima', // Database correto
     tabelaAtiva,
     currentPage,
     filters
   );
 
-  // 5. Função para lidar com a seleção de uma NOVA tabela
+  // 5. Lógica 'useMemo' para inferir os tipos de coluna (A "Ponte")
+  const colunasDisponiveis = useMemo((): ColumnInfo[] => {
+    if (!colunas || colunas.length === 0) {
+      return [];
+    }
+
+    const primeiraLinha: DataRow | undefined = dados?.[0];
+
+    return colunas.map((colNome) => {
+      let tipo: ColumnType = 'unknown';
+
+      if (colNome.startsWith('data')) {
+        tipo = 'date';
+      } else if (colNome.startsWith('hora')) {
+        tipo = 'time';
+      } 
+      else if (primeiraLinha) {
+        const valor = primeiraLinha[colNome];
+        if (typeof valor === 'number') {
+          tipo = 'number';
+        } else if (typeof valor === 'string') {
+          tipo = 'string';
+        }
+      }
+      
+      if (tipo === 'unknown') {
+        tipo = 'string';
+      }
+      
+      return { name: colNome, type: tipo };
+    });
+  }, [colunas, dados]); // Recalcula se as colunas ou dados mudarem
+
   const handleSelectTabela = (novaTabela: string) => {
     setTabelaAtiva(novaTabela);
-    // Reseta filtros e páginação ao trocar de tabela
     setFilters({});
     setCurrentPage(1);
   };
 
-  // 6. Função para o componente de Paginação
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
   };
@@ -50,35 +84,33 @@ export function SimaTablePage() {
     <div className="flex h-screen bg-gray-100">
       {/* Menu Lateral */}
       <Menu 
+        database='sima'
         title="Dados Sima"
         tabelas={tabelasDisponiveis}
         tabelaAtiva={tabelaAtiva}
-        onSelectTabela={handleSelectTabela} // <-- Usar o novo handler
+        onSelectTabela={handleSelectTabela}
       />
 
       {/* Área de Conteúdo Principal */}
       <main className="flex-1 overflow-y-auto">
         {tabelaAtiva ? (
           <>
-            {/* 7. Renderizar o FilterBar */}
+            {/* 6. Passar as novas props para o FilterBar */}
             <FilterBar 
-              key={tabelaAtiva} // Força o reset do FilterBar ao trocar de tabela
+              key={tabelaAtiva}
               onApplyFilters={setFilters}
               onClearFilters={() => setFilters({})}
+              onExportClick={() => setIsModalOpen(true)} // Abre o modal
+              colunasDisponiveis={colunasDisponiveis}  // Passa as colunas inferidas
             />
 
-            {/* 8. Passar todas as props necessárias para o DataTable */}
             <DataTable 
               database="sima"
               tableName={tabelaAtiva} 
-              
-              // Props de dados (resultado do hook)
               dados={dados}
               colunas={colunas}
               loading={loading}
               error={error}
-              
-              // Props de Paginação
               paginacao={paginacao}
               onPageChange={handlePageChange}
             />
@@ -87,6 +119,19 @@ export function SimaTablePage() {
           <Placeholder />
         )}
       </main>
+
+      {/* 7. Renderizar o Modal (controlado pela página-pai) */}
+      {tabelaAtiva && ( // Só renderiza o modal se houver uma tabela ativa
+        <ModalExport
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          database="sima" // Database correto
+          tableName={tabelaAtiva}
+          currentFilters={filters}
+          totalRecords={paginacao.total}
+          pageRecords={dados.length}
+        />
+      )}
     </div>
   );
 }

@@ -53,3 +53,13 @@ export interface ApiResponse extends PaginacaoState {
   // Você pode adicionar outras propriedades da API aqui, se houver
   // ex: message?: string;
 }
+
+/*
+  * Define os tipos de coluna possíveis para as colunas de cada tabela.
+*/
+export type ColumnType = 'string' | 'number' | 'date' | 'time' | 'unknown';
+
+export interface ColumnInfo {
+  name: string;      // ex: "ph"
+  type: ColumnType; // ex: "number"
+}
