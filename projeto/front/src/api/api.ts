@@ -1,12 +1,15 @@
-import type { ApiResponse } from '../types/types'; // Verifique o caminho dos seus tipos
+// api/api.ts
 
-// 1. (MELHORIA) Criamos um tipo para os nomes dos bancos de dados
-// Isso garante que apenas os valores permitidos sejam passados para a função.
-export type DatabaseName = 'furnas' | 'balcar' | 'sima';
+// 1. Importar os tipos centralizados (ApiResponse, DatabaseName, FilterParams)
+import type { ApiResponse, DatabaseName, FilterParams } from '../types/types'; // Verifique o caminho dos seus tipos
+
+// 2. A definição local de 'DatabaseName' foi REMOVIDA daqui.
+// export type DatabaseName = 'furnas' | 'balcar' | 'sima'; // <- Removido
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-type FilterParams = Record<string, string | number>;
+// 3. A definição local de 'FilterParams' foi REMOVIDA daqui.
+// type FilterParams = Record<string, string | number>; // <- Removido
 
 /**
  * Busca dados paginados de uma tabela específica em um banco de dados.
@@ -17,16 +20,15 @@ type FilterParams = Record<string, string | number>;
  * @param filters Um objeto com os parâmetros de filtro.
  * @returns Uma promessa que resolve com os dados da API.
  */
-// 2. A função foi renomeada e agora aceita o parâmetro 'database'
 export const fetchTableData = async (
-  database: DatabaseName,
+  database: DatabaseName, // Agora usa o tipo importado
   tableName: string,
   page: number,
   limit: number = 10,
-  filters: FilterParams = {}
-): Promise<ApiResponse> => {
+  filters: FilterParams = {} // Agora usa o tipo importado
+): Promise<ApiResponse> => { // Agora usa o tipo importado
   
-  // 3. A URL agora é construída dinamicamente com o nome do banco
+  // A URL agora é construída dinamicamente com o nome do banco
   const baseUrl = `${API_BASE_URL}/api/${database}/${tableName}/all`;
 
   const params = new URLSearchParams({

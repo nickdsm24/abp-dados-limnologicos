@@ -1,229 +1,157 @@
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight, LoaderCircle, ServerCrash, Table, Search } from 'lucide-react';
-import { useTableData } from '../../hooks/useTableData';
-import { type DatabaseName } from '../../api/api';
+// src/components/commons/DataTable.tsx (REESCRITO)
 
+import { Loader2, AlertCircle, Table2 } from 'lucide-react';
+import type { 
+  DataType, 
+  PaginacaoState, 
+  DatabaseName 
+} from '../../types/types'; // Ajuste o caminho
+
+// 1. Definir as PROPS que o DataTable agora espera receber
 interface DataTableProps {
   database: DatabaseName;
   tableName: string;
+  dados: DataType;
+  colunas: string[];
+  loading: boolean;
+  error: string | null;
+  paginacao: PaginacaoState;
+  onPageChange: (newPage: number) => void;
 }
 
-function DataTable({ database, tableName }: DataTableProps) {
-  const [paginaAtual, setPaginaAtual] = useState<number>(1);
-  const [filtrosAtivos, setFiltrosAtivos] = useState({});
-  const [filtrosForm, setFiltrosForm] = useState({
-    animal: '',
-    candy: '',
-    money: '',
-  });
+// 2. O componente agora é 'burro' (de apresentação)
+// Ele recebe tudo via props e não tem mais o hook useTableData
+export default function DataTable({
+  tableName,
+  dados,
+  colunas,
+  loading,
+  error,
+  paginacao,
+  onPageChange
+}: DataTableProps) {
 
-  const { dados, colunas, paginacao, loading, error } = useTableData(
-    database,
-    tableName,
-    paginaAtual,
-    filtrosAtivos
-  );
-
-  const formatarNomeColuna = (nome: string): string => {
-    const resultado = nome.replace(/([A-Z])/g, ' $1');
-    return resultado.charAt(0).toUpperCase() + resultado.slice(1);
-  };
-
-  // --- NOVA FUNÇÃO DE RENDERIZAÇÃO (DO COMPONENTE 2) ---
-  // Agora ela recebe também o nome da coluna para formatações específicas.
-  const renderizarCelula = (item: unknown, coluna: string): React.ReactNode => {
-  // 1. Trata valores nulos ou indefinidos
-  if (item === null || item === undefined) {
-    return <span className="text-gray-400 italic">N/A</span>;
-  }
-
-  // 2. Trata arrays
-  if (Array.isArray(item)) {
-    return item.join(', ');
-  }
-
-  // 3. Trata objetos
-  if (typeof item === 'object' && item !== null) {
-    const itemObj = item as Record<string, unknown>;
-
-    // --- Campos/Casos conhecidos e específicos ---
-    if ('nrocampanha' in itemObj) {
-      return String(itemObj.nrocampanha);
-    }
-    if('nroCampanha' in itemObj){
-      return String(itemObj.nroCampanha);
-    }
-    if ('rotulo' in itemObj) {
-      return String(itemObj.rotulo);
-    }
-    if ('descricao' in itemObj) {
-      return String(itemObj.descricao);
-    }
-    if ('nome' in itemObj) {
-      return String(itemObj.nome);
-    }
-
-    // --- Fallback genérico ---
-    // Caso o objeto não tenha propriedades conhecidas, tenta encontrar um campo "visível".
-    // Isso evita mostrar JSON cru no front.
-    const visibleKey = Object.keys(itemObj).find(
-      (k) =>
-        k.toLowerCase().includes('nro') ||
-        k.toLowerCase().includes('nome') ||
-        k.toLowerCase().includes('rotulo') ||
-        k.toLowerCase().includes('descricao')
-    );
-
-    if (visibleKey && typeof itemObj[visibleKey] === 'string') {
-      return itemObj[visibleKey] as string;
-    }
-
-    // --- Caso nada legível seja encontrado ---
+  // Handler para loading
+  if (loading) {
     return (
-      <pre className="text-xs bg-gray-100 p-1 rounded whitespace-pre-wrap">
-        {JSON.stringify(item, null, 2)}
-      </pre>
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin text-blue-500" size={40} />
+      </div>
     );
   }
 
-  // 4. Trata datas (fora do bloco anterior)
-  if (
-    (coluna.includes('data') ||
-      coluna.includes('date') ||
-      coluna.endsWith('At')) &&
-    typeof item === 'string'
-  ) {
-    const data = new Date(item);
-    if (!isNaN(data.getTime())) {
-      return data.toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    }
+  // Handler para erro
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-red-600">
+        <AlertCircle size={40} />
+        <p className="mt-2 text-lg font-semibold">Erro ao carregar dados</p>
+        <p className="text-sm">{error}</p>
+      </div>
+    );
   }
 
-  // 5. Valor padrão: converte para string
-  return String(item);
-};
-
-  const handleFiltroChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFiltrosForm(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleAplicarFiltros = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPaginaAtual(1);
-    setFiltrosAtivos(filtrosForm);
-  };
-  
-  const handlePaginaAnterior = () => {
-    setPaginaAtual((prev) => Math.max(prev - 1, 1));
-  };
-  
-  const handlePaginaProxima = () => {
-    setPaginaAtual((prev) => Math.min(prev + 1, paginacao.totalPages));
-  };
-  
-  return (
-    <div className="bg-[#F3F7FB] p-4 sm:p-6 lg:p-8" style={{ minHeight: 'calc(100vh)' }}>
-      <div className="max-w-7xl mx-auto">
-        
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 capitalize">
-            Tabela: {tableName.replace('-', ' ')}
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Exibindo dados do banco: <span className="font-semibold">{database}</span>
-          </p>
-        </header>
-
-        <form onSubmit={handleAplicarFiltros} className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
-              <div>
-                <label htmlFor="animal" className="block text-sm font-medium text-gray-700">Animal</label>
-                <input type="text" id="animal" name="animal" value={filtrosForm.animal} onChange={handleFiltroChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"/>
-              </div>
-              {/* Adicione outros filtros aqui conforme necessário */}
-              <button type="submit" className="flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-[#1777af] rounded-md hover:bg-opacity-90 h-10">
-                <Search className="w-4 h-4 mr-2" /> Aplicar Filtros
-              </button>
-          </div>
-        </form>
-
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          {loading && (
-            <div className="flex flex-col items-center justify-center p-12 text-[#1777af]">
-              <LoaderCircle className="animate-spin h-10 w-10 mb-4" />
-              <p className="text-lg font-semibold">Carregando dados...</p>
-            </div>
-          )}
-
-          {error && !loading && (
-            <div className="flex flex-col items-center justify-center p-12 text-red-600">
-              <ServerCrash className="h-10 w-10 mb-4" />
-              <p className="text-lg font-semibold">Ocorreu um Erro</p>
-              <p className="text-sm">{error}</p>
-            </div>
-          )}
-
-          {!loading && !error && dados.length === 0 && (
-            <div className="flex flex-col items-center justify-center p-12 text-gray-500">
-              <Table className="h-10 w-10 mb-4" />
-              <p className="text-lg font-semibold">Nenhum dado encontrado.</p>
-              <p className="text-sm mt-1">Tente ajustar os filtros ou selecione outra tabela.</p>
-            </div>
-          )}
-          
-          {!loading && !error && dados.length > 0 && (
-            <>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left text-gray-700">
-                  <thead className="text-xs text-white uppercase bg-[#1777af]">
-                    <tr>
-                      {colunas.map((col) => (
-                        <th key={col} scope="col" className="px-6 py-3">{formatarNomeColuna(col)}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dados.map((item, index) => (
-                      <tr key={typeof item.id === 'string' || typeof item.id === 'number' ? item.id : index} className="bg-white border-b hover:bg-[#F3F7FB]">
-                        {colunas.map((col) => (
-                          <td key={col} className="px-6 py-4 whitespace-nowrap">
-                            {/* --- AJUSTE NA CHAMADA DA FUNÇÃO --- */}
-                            {/* Passamos o nome da coluna para a função */}
-                            {renderizarCelula(item[col], col)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 border-t border-gray-200">
-                <span className="text-sm text-gray-700">
-                  Página <span className="font-semibold">{paginacao.page}</span> de <span className="font-semibold">{paginacao.totalPages}</span> ({paginacao.total} registros)
-                </span>
-                <div className="inline-flex items-center space-x-2">
-                  <button onClick={handlePaginaAnterior} disabled={paginaAtual === 1} className="flex items-center justify-center px-3 h-8 text-sm font-medium text-white bg-[#1777af] rounded-l-md disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-opacity-90">
-                    <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
-                  </button>
-                  <button onClick={handlePaginaProxima} disabled={paginaAtual === paginacao.totalPages || paginacao.totalPages === 0} className="flex items-center justify-center px-3 h-8 text-sm font-medium text-white bg-[#1777af] rounded-r-md disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-opacity-90">
-                    Próxima <ChevronRight className="w-4 h-4 ml-1" />
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+  // Handler para dados vazios
+  if (!dados || dados.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+        <Table2 size={40} />
+        <p className="mt-2 text-lg font-semibold">Nenhum dado encontrado</p>
+        <p className="text-sm">Nenhum registro corresponde aos filtros para a tabela "{tableName}".</p>
       </div>
+    );
+  }
+
+  // Renderização da Tabela
+  return (
+    <div className="p-4">
+      <div className="overflow-x-auto bg-white rounded-lg shadow border border-gray-200">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              {colunas.map((coluna) => (
+                <th
+                  key={coluna}
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  {coluna.replace(/_/g, ' ')} {/* Formata nomes de coluna */}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {dados.map((row, rowIndex) => (
+              <tr key={rowIndex} className="hover:bg-gray-50">
+                {colunas.map((coluna) => (
+                  <td key={`${rowIndex}-${coluna}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {/* Converte valores para string para renderização segura */}
+                    {String(row[coluna] ?? '')}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 3. Renderiza o componente de paginação */}
+      <Pagination 
+        paginacao={paginacao}
+        onPageChange={onPageChange}
+      />
     </div>
   );
 }
 
-export default DataTable;
+// --- Componente de Paginação (embutido) ---
+
+interface PaginationProps {
+  paginacao: PaginacaoState;
+  onPageChange: (newPage: number) => void;
+}
+
+function Pagination({ paginacao, onPageChange }: PaginationProps) {
+  const { page, totalPages, total } = paginacao;
+
+  const handlePrevious = () => {
+    if (page > 1) {
+      onPageChange(page - 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (page < totalPages) {
+      onPageChange(page + 1);
+    }
+  };
+
+  if (totalPages <= 1) return null; // Não mostra paginação se só houver 1 página
+
+  return (
+    <div className="flex items-center justify-between mt-4 px-2">
+      <div className="text-sm text-gray-700">
+        Total de <span className="font-medium">{total}</span> registros
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={handlePrevious}
+          disabled={page === 1}
+          className="px-3 py-1 text-sm border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Anterior
+        </button>
+        <span className="text-sm text-gray-700">
+          Página <span className="font-medium">{page}</span> de <span className="font-medium">{totalPages}</span>
+        </span>
+        <button
+          onClick={handleNext}
+          disabled={page === totalPages}
+          className="px-3 py-1 text-sm border border-gray-300 rounded-md bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Próxima
+        </button>
+      </div>
+    </div>
+  );
+}

@@ -1,14 +1,19 @@
+// src/hooks/useTableData.ts (MODIFICADO)
+
 import { useState, useEffect } from 'react';
-// 1. Imports atualizados para a nova API genérica e o tipo DatabaseName
-import { fetchTableData, type DatabaseName } from '../api/api'; // Ajuste o caminho se necessário
-import type { DataType, PaginacaoState } from '../types/types';
+// 1. Imports atualizados
+import { fetchTableData } from '../api/api'; 
+import type { 
+  DatabaseName, 
+  DataType, 
+  PaginacaoState, 
+  FilterParams 
+} from '../types/types'; // Importe todos os tipos
 
-type FilterParams = Record<string, string | number>;
-
-// 2. Hook renomeado e com o novo parâmetro 'database'
+// 2. A Assinatura do Hook DEVE ser alterada aqui
 export const useTableData = (
   database: DatabaseName,
-  tableName: string, 
+  tableName: string | null, // <-- ESTA É A CORREÇÃO
   currentPage: number, 
   filters: FilterParams
 ) => {
@@ -26,7 +31,7 @@ export const useTableData = (
   const stringifiedFilters = JSON.stringify(filters);
 
   useEffect(() => {
-    // A guarda agora verifica se temos uma tabela para buscar
+    // 3. Esta guarda JÁ TRATA O CASO 'null' corretamente
     if (!tableName) {
       setDados([]);
       setColunas([]);
@@ -38,7 +43,7 @@ export const useTableData = (
       setLoading(true);
       setError(null);
       try {
-        // 3. Chamada à nova função de API, passando o 'database'
+        // Agora 'tableName' é 'string' (não 'null') e a chamada funciona
         const resultado = await fetchTableData(database, tableName, currentPage, 10, filters);
         
         setDados(resultado.data || []);
@@ -67,7 +72,6 @@ export const useTableData = (
 
     loadData();
 
-    // 4. Parâmetro 'database' adicionado às dependências do useEffect
   }, [database, tableName, currentPage, stringifiedFilters, filters]);
 
   return { dados, colunas, paginacao, loading, error };

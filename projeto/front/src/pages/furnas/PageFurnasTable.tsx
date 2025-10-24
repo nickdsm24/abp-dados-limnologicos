@@ -1,76 +1,92 @@
+// FurnasTablePage.tsx (MODIFICADO)
+
 import { useState } from 'react';
 import { Menu } from '../../components/commons/TableMenu';
 import DataTable from '../../components/commons/DataTable';
 import { Placeholder } from '../../components/commons/TablePlaceholder';
+import { FilterBar } from '../../components/Filters/FilterBar'; // Importar o FilterBar
+import { useTableData } from '../../hooks/useTableData';
+// Importar o tipo de Filtro
+import type { FilterParams } from '../../types/types'; // Ajuste o caminho
 
-// --- LISTA DE TABELAS DISPONÍVEIS PARA FURNAS (COMPLETA E ORDENADA) ---
+// --- LISTA DE TABELAS DISPONÍVEIS ... (seu código original) ---
 const tabelasDisponiveis = [
-  { label: 'Abiótico (Coluna)', value: 'abiotico-coluna' },
-  { label: 'Abiótico (Superfície)', value: 'abiotico-superficie' },
-  { label: 'Água Matéria Orgânica Sedimento', value: 'agua-materia-organica-sedimento' },
-  { label: 'Biótico (Coluna)', value: 'biotico-coluna' },
-  { label: 'Biótico (Superfície)', value: 'biotico-superficie' },
-  { label: 'Bolhas', value: 'bolhas' },
-  { label: 'Câmara Solo', value: 'camara-solo' },
-  { label: 'Campanha', value: 'campanha' },
-  { label: 'Campanha por Tabela', value: 'campanha-por-tabela' },
-  { label: 'Campo por Tabela', value: 'campo-por-tabela' },
-  { label: 'Carbono', value: 'carbono' },
-  { label: 'Concentração Gás Água', value: 'concentracao-gas-agua' },
-  { label: 'Concentração Gás Sedimento', value: 'concentracao-gas-sedimento' },
-  { label: 'Dados Precipitação', value: 'dados-precipitacao' },
-  { label: 'Dados Represa', value: 'dados-represa' },
-  { label: 'Difusão', value: 'difusao' },
-  { label: 'Dupla Dessorção Água', value: 'dupla-dessorcao-agua' },
-  { label: 'Fluxo Bolhas INPE', value: 'fluxo-bolhas-inpe' },
-  { label: 'Fluxo Carbono', value: 'fluxo-carbono' },
-  { label: 'Fluxo Difusivo', value: 'fluxo-difusivo' },
-  { label: 'Fluxo Difusivo INPE', value: 'fluxo-difusivo-inpe' },
-  { label: 'Gases em Bolhas', value: 'gases-em-bolhas' },
-  { label: 'Horiba', value: 'horiba' },
-  { label: 'Instituição', value: 'instituicao' },
-  { label: 'Íons na Água Intersticial do Sedimento', value: 'ions-na-agua-intersticial-do-sedimento' },
-  { label: 'Medida Campo Coluna', value: 'medida-campo-coluna' },
-  { label: 'Medida Campo Superfície', value: 'medida-campo-superficie' },
-  { label: 'Nutrientes Sedimento', value: 'nutrientes-sedimento' },
-  { label: 'Parâmetros Biológicos Físicos Água', value: 'parametros-biologicos-fisicos-agua' },
-  { label: 'PFQ', value: 'pfq' },
-  { label: 'Reservatório', value: 'reservatorio' },
-  { label: 'Sítio', value: 'sitio' },
-  { label: 'Tabela', value: 'tabela' },
-  { label: 'TC', value: 'tc' },
-  { label: 'Variáveis Físicas Químicas da Água', value: 'variaveis-fisicas-quimicas-da-agua' },
+ { label: 'Abiótico (Coluna)', value: 'abiotico-coluna' },
+  // ... resto das tabelas
 ];
 
 export function FurnasTablePage() {
-  // Este estado controla qual tabela está ativa na aplicação inteira
-  const [tabelaAtiva, setTabelaAtiva] = useState<string | null>(null);
+ // Estado da tabela ativa (já estava em TS)
+ const [tabelaAtiva, setTabelaAtiva] = useState<string | null>(null);
+ 
+ // LEVANTAR O ESTADO: Tipar os novos estados
+ const [filters, setFilters] = useState<FilterParams>({});
+ const [currentPage, setCurrentPage] = useState<number>(1);
 
-  return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Menu Lateral */}
-      <Menu 
-        tabelas={tabelasDisponiveis}
-        tabelaAtiva={tabelaAtiva}
-        onSelectTabela={setTabelaAtiva}
+ // CHAMAR O HOOK AQUI: O pai agora busca os dados
+ const { dados, colunas, paginacao, loading, error } = useTableData(
+  'furnas',
+  tabelaAtiva, // Passando string | null
+  currentPage,
+  filters
+ );
+
+ // Tipar o handler de seleção
+ const handleSelectTabela = (novaTabela: string) => {
+  setTabelaAtiva(novaTabela);
+  // Reseta filtros e páginação ao trocar de tabela
+  setFilters({});
+  setCurrentPage(1);
+ };
+
+ // Tipar o handler de página
+ const handlePageChange = (newPage: number) => {
+  setCurrentPage(newPage);
+ };
+
+ return (
+  <div className="flex h-screen bg-gray-100">
+   {/* Menu Lateral */}
+   <Menu 
+    title = "Dados Furnas"
+    tabelas={tabelasDisponiveis}
+    tabelaAtiva={tabelaAtiva}
+    onSelectTabela={handleSelectTabela} // Usar a nova função
+   />
+
+   {/* Área de Conteúdo Principal */}
+   <main className="flex-1 overflow-y-auto">
+    {tabelaAtiva ? (
+     <>
+      {/* Renderizar o FilterBar */}
+      <FilterBar 
+       key={tabelaAtiva} // Força o reset do FilterBar ao trocar de tabela
+       onApplyFilters={setFilters}
+       onClearFilters={() => setFilters({})}
       />
 
-      {/* Área de Conteúdo Principal */}
-      <main className="flex-1 overflow-y-auto">
-        {tabelaAtiva ? (
-          // Se uma tabela está ativa, renderiza o DataTable,
-          // informando a ele QUAL BANCO e QUAL TABELA usar.
-          <DataTable 
-            database="furnas" 
-            tableName={tabelaAtiva} 
-          />
-        ) : (
-          // Caso contrário, renderiza o placeholder
-          <Placeholder />
-        )}
-      </main>
-    </div>
-  );
+      {/* Passar dados, paginação e handlers para o DataTable */}
+      <DataTable 
+       database="furnas" 
+       tableName={tabelaAtiva} 
+       
+       // Props de dados (resultado do hook)
+       dados={dados}
+       colunas={colunas}
+       loading={loading}
+       error={error}
+       
+       // Props de Paginação (assumindo que DataTable foi refatorado)
+       paginacao={paginacao}
+       onPageChange={handlePageChange}
+      />
+     </>
+    ) : (
+     <Placeholder />
+    )}
+   </main>
+  </div>
+ );
 }
 
 export default FurnasTablePage;

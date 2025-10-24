@@ -1,3 +1,5 @@
+// App.js (Refatorado)
+
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import './index.css';
 import BarraBrasil from "./components/commons/BarraBrasil";
@@ -9,7 +11,7 @@ import SimaTable from "./pages/sima/PageSimaTable";
 import SimaGraph from "./pages/sima/SimaGraph";
 import SimaMap from "./pages/sima/SimaMap";
 import BalcarMenu from "./pages/balcar/BalcarMenu";
-import BalcarTable from "./pages/balcar/BalcarTable";
+import BalcarTable from "./pages/balcar/PageBalcarTable";
 import BalcarGraph from "./pages/balcar/BalcarGraph";
 import BalcarMap from "./pages/balcar/BalcarMap";
 import FurnasMenu from "./pages/furnas/FurnasMenu";
@@ -27,14 +29,24 @@ function App() {
 
 function AppWithRouter() {
   const location = useLocation();
-  const presentationPage = location.pathname === "/"; // Verifica se está na página inicial
+
+  // 1. Criamos um array com TODAS as rotas onde o MenuBar deve ser ocultado
+  const pathsToHideMenuBar = [
+    "/",        // PresentationPage
+    "/sima",    // SimaMenu
+    "/balcar",  // BalcarMenu
+    "/furnas"   // FurnasMenu
+  ];
+
+  // 2. Verificamos se o pathname atual ESTÁ INCLUÍDO nesse array
+  const hideMenuBar = pathsToHideMenuBar.includes(location.pathname);
 
   return (
     <div>
       <BarraBrasil />
       
-      {/* Renderiza o MenuBar apenas se não estiver na página inicial */}
-      {!presentationPage && <MenuBar />}
+      {/* 3. Usamos a nova variável 'hideMenuBar' para a renderização condicional */}
+      {!hideMenuBar && <MenuBar />}
       
       <div>
         <Routes>
@@ -58,7 +70,6 @@ function AppWithRouter() {
   );
 }
 
-
-
+// 4. Você não precisa mais exportar AppWithRouter se ele só é usado aqui
 export default App;
 
