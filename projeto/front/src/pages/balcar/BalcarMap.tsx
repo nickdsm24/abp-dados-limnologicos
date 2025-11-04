@@ -1,8 +1,21 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { colors } from "../../components/Balcar/data/mockData";
 import L from "leaflet";
+
+interface ColorPalette {
+  background: string;
+  surface: string;
+  primary: string;
+  secondary: string;
+}
+
+const colors: ColorPalette = {
+  background: '#F3F7FB',
+  surface: '#FFFFFF',
+  primary: '#CC5500',
+  secondary: '#FF8C00',
+};
 
 // --- Interfaces e Funções Úteis (Mantidas) ---
 

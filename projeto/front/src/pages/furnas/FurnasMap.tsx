@@ -2,10 +2,20 @@ import React, { useState, useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-// Importe colorsFurnas para usar as cores no menu
-import { colorsFurnas } from "../../components/Furnas/data/mockData"; 
-// Certifique-se de que os paths estão corretos
-import { colorsSima } from "../../components/Sima/data/mockData"; 
+
+interface ColorPalette {
+  background: string;
+  surface: string;
+  primary: string;
+  secondary: string;
+}
+
+const colorsFurnas: ColorPalette = {
+    background: '#F3F7FB',
+    surface: '#FFFFFF',
+    primary: '#CC5500',
+    secondary: '#FF8C00',
+};
 
 
 // --- Interfaces e Tipos Furnas (Mantidas) ---
@@ -487,7 +497,7 @@ const FurnasMap: React.FC = () => {
       <SidebarFurnas
         tipoFiltro={tipoFiltro}
         setTipoFiltro={setTipoFiltro}
-        statusFiltro={setStatusFiltro}
+        statusFiltro={statusFiltro}
         setStatusFiltro={setStatusFiltro}
         searchText={searchText}
         setSearchText={setSearchText}

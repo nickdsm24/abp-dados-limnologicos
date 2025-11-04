@@ -2,9 +2,23 @@ import React, { useState, useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup, CircleMarker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { colorsSima } from "../../components/Sima/data/mockData";
 
 // --- Interfaces e Funções Úteis (Mantidas) ---
+
+interface ColorPalette {
+  background: string;
+  surface: string;
+  primary: string;
+  secondary: string;
+}
+
+
+const colorsSima: ColorPalette = {
+    background: '#F3F7FB',
+    surface: '#FFFFFF',
+    primary: '#008080',
+    secondary: '#00CED1',
+};
 
 interface ImageMap {
   [key: string]: string;
