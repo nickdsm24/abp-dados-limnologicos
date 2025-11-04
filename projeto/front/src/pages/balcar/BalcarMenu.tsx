@@ -68,12 +68,14 @@ const MapIcon: React.FC<IconProps> = (props) => (
 // --- Sidebar ---
 const Sidebar: React.FC = () => {
   const location = useLocation();
+
   const menuItems: MenuItem[] = [
     { label: "Início", path: "/", icon: HomeIcon },
     { label: "Tabelas", path: "/balcar-table", icon: TableIcon },
     { label: "Gráficos", path: "/balcar-graph", icon: ChartIcon },
     { label: "Mapas", path: "/balcar-map", icon: MapIcon },
   ];
+
   const isActive = (path: string) => location.pathname === path;
 
   return (
@@ -84,7 +86,7 @@ const Sidebar: React.FC = () => {
       <div className="flex flex-col flex-grow">
         <div className="flex items-center mb-8 pb-4 border-b border-gray-700">
           <img
-            src="/logo-balcar.png"
+            src="/balcar.png"
             alt="Logo do Projeto Balcar"
             className="w-10 h-10 mr-3 drop-shadow-lg object-contain"
           />
@@ -94,10 +96,7 @@ const Sidebar: React.FC = () => {
           </div>
         </div>
 
-        <nav
-          className="flex flex-col gap-2 mb-8"
-          aria-label="Menu principal"
-        >
+        <nav className="flex flex-col gap-2 mb-8" aria-label="Menu principal">
           <h2 className="text-xs font-semibold uppercase text-gray-500 mb-2">
             Navegação
           </h2>
@@ -119,7 +118,7 @@ const Sidebar: React.FC = () => {
 
         <div className="mt-auto pt-4 border-t border-gray-700">
           <p className="text-sm text-gray-400 leading-snug">
-            Balanço de caborno nos reservatórios de FURNAS.s.
+            Balanço de carbono nos reservatórios de FURNAS.
           </p>
         </div>
       </div>
@@ -162,7 +161,8 @@ const HomePage: React.FC = () => {
         <div
           className="absolute inset-0 opacity-10"
           style={{
-            backgroundImage: `radial-gradient(${primaryColor} 1px, transparent 1px), radial-gradient(${primaryColor} 1px, transparent 1px)`,
+            backgroundImage: `radial-gradient(${primaryColor} 1px, transparent 1px),
+              radial-gradient(${primaryColor} 1px, transparent 1px)`,
             backgroundSize: "20px 20px",
             backgroundPosition: "0 0, 10px 10px",
           }}
@@ -170,25 +170,20 @@ const HomePage: React.FC = () => {
         />
 
         <div className="relative z-10">
-          {/* Logo no topo substituindo o emoji 💧 */}
           <img
             src="/balcar.png"
             alt="Logo do Projeto Balcar"
             className="w-24 h-24 mb-6 inline-block drop-shadow-lg object-contain brightness-110"
           />
-
           <h1 className="text-5xl font-extrabold text-white drop-shadow-md mb-4">
             Projeto Balcar
           </h1>
-
           <h2 className="text-2xl font-medium text-white/90 mb-6">
             Monitoramento e Análise de Dados Limnológicos
           </h2>
-
           <p className="text-base text-white/70 max-w-xl mx-auto mb-12">
-         Balanço de caborno nos reservatórios de FURNAS.
+            Balanço de carbono nos reservatórios de FURNAS.
           </p>
-
           <h3 className="text-3xl font-extrabold text-white mb-8">
             Explore os Dados
           </h3>
@@ -202,9 +197,7 @@ const HomePage: React.FC = () => {
               >
                 <btn.icon active={true} />
                 <span className="font-semibold text-xl">{btn.label}</span>
-                <p className="text-xs text-white/80 mt-1">
-                  {btn.description}
-                </p>
+                <p className="text-xs text-white/80 mt-1">{btn.description}</p>
               </Link>
             ))}
           </div>
@@ -214,7 +207,7 @@ const HomePage: React.FC = () => {
       <div className="pt-16 pb-20 text-center bg-gray-50">
         <p className="text-gray-600">
           Escolha como deseja visualizar e analisar os dados limnológicos
-          coletados
+          coletados.
         </p>
       </div>
     </div>
