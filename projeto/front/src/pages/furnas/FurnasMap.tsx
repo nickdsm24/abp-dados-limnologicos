@@ -11,10 +11,10 @@ interface ColorPalette {
 }
 
 const colorsFurnas: ColorPalette = {
-    background: '#F3F7FB',
-    surface: '#FFFFFF',
-    primary: '#CC5500',
-    secondary: '#FF8C00',
+  background: '#F3F7FB',
+  surface: '#FFFFFF',
+  primary: '#CC5500',
+  secondary: '#FF8C00',
 };
 
 
@@ -85,7 +85,7 @@ interface Reservatorio {
   lat: number | null;
   lng: number | null;
   // Adicionando um campo de status simulado (se necessário)
-  status: 'Aberto' | 'Fechado'; 
+  status: 'Aberto' | 'Fechado';
 }
 
 interface Sitio {
@@ -101,7 +101,7 @@ interface Sitio {
     lng: number;
   };
   // Adicionando um campo de status simulado (se necessário)
-  status: 'Aberto' | 'Fechado'; 
+  status: 'Aberto' | 'Fechado';
 }
 
 interface ApiResponse<T> {
@@ -197,8 +197,8 @@ interface SidebarPropsFurnas {
   filteredItems: DataItem[];
   totalReservatorios: number;
   totalSitios: number;
-  selectedItemId: string | "all"; 
-  onSelectItem: (id: string) => void; 
+  selectedItemId: string | "all";
+  onSelectItem: (id: string) => void;
 }
 
 const SidebarFurnas: React.FC<SidebarPropsFurnas> = ({
@@ -247,19 +247,6 @@ const SidebarFurnas: React.FC<SidebarPropsFurnas> = ({
         </div>
       </div>
 
-      <button
-        className={`w-full p-2 mb-6 rounded-lg font-semibold text-white shadow-md transition-colors hover:opacity-90`}
-        style={{ backgroundColor: colorsFurnas.primary }}
-        onClick={() => {
-          onSelectItem("all");
-          alert("Funcionalidade 'Me localizar' a ser implementada com a API de Geolocation.");
-        }}
-      >
-        <div className="flex items-center justify-center space-x-2">
-          <span>📍 Me localizar</span>
-        </div>
-      </button>
-
       <div className="mb-4">
         <h3 className="font-semibold text-sm mb-2 text-gray-700">Tipo</h3>
         <div className="flex space-x-2 p-1 rounded-lg border border-gray-200 bg-gray-50">
@@ -268,8 +255,8 @@ const SidebarFurnas: React.FC<SidebarPropsFurnas> = ({
               key={tipo}
               onClick={() => setTipoFiltro(tipo)}
               className={`flex-1 p-2 rounded-lg text-sm font-medium transition-all ${tipoFiltro === tipo
-                  ? `text-white shadow-sm`
-                  : "text-gray-700 hover:bg-gray-100"
+                ? `text-white shadow-sm`
+                : "text-gray-700 hover:bg-gray-100"
                 }`}
               style={tipoFiltro === tipo ? { backgroundColor: colorsFurnas.primary } : {}}
             >
@@ -287,8 +274,8 @@ const SidebarFurnas: React.FC<SidebarPropsFurnas> = ({
               key={status}
               onClick={() => setStatusFiltro(status)}
               className={`flex-1 p-2 rounded-lg text-sm font-medium transition-all ${statusFiltro === status
-                  ? `text-white shadow-sm`
-                  : "text-gray-700 hover:bg-gray-100"
+                ? `text-white shadow-sm`
+                : "text-gray-700 hover:bg-gray-100"
                 }`}
               style={statusFiltro === status ? { backgroundColor: colorsFurnas.primary } : {}}
             >
@@ -371,11 +358,11 @@ const FurnasMap: React.FC = () => {
           // Adicionando status simulado
           const reservatoriosComStatus = (reservatoriosData.data || []).map((r, i) => ({
             ...r,
-            status: i % 3 === 0 ? 'Fechado' : 'Aberto' as 'Aberto' | 'Fechado' 
+            status: i % 3 === 0 ? 'Fechado' : 'Aberto' as 'Aberto' | 'Fechado'
           }));
           const sitiosComStatus = (sitiosData.data || []).map((s, i) => ({
             ...s,
-            status: i % 5 === 0 ? 'Fechado' : 'Aberto' as 'Aberto' | 'Fechado' 
+            status: i % 5 === 0 ? 'Fechado' : 'Aberto' as 'Aberto' | 'Fechado'
           }));
 
           setReservatorios(reservatoriosComStatus);
@@ -445,7 +432,7 @@ const FurnasMap: React.FC = () => {
       const idString = `${item.type}-${item.type === 'reservatorio' ? item.idreservatorio : item.idsitio}`;
       return idString === selectedItemId;
     });
-    return selected.length > 0 ? selected : filteredDataItems; 
+    return selected.length > 0 ? selected : filteredDataItems;
   }, [selectedItemId, filteredDataItems]);
 
   // Separa os itens filtrados para o mapa
@@ -491,7 +478,7 @@ const FurnasMap: React.FC = () => {
 
   return (
     // LAYOUT FLEXÍVEL (Adicionado ao FurnasMap)
-    <div className="flex" style={{ height: "calc(100vh - 80px)" }}> 
+    <div className="flex" style={{ height: "calc(100vh - 80px)" }}>
 
       {/* Sidebar */}
       <SidebarFurnas

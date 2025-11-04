@@ -247,20 +247,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      <button
-        className={`w-full p-2 mb-6 rounded-lg font-semibold text-white shadow-md transition-colors hover:opacity-90`}
-        style={{ backgroundColor: colorsSima.primary }}
-        onClick={() => {
-          // NOVO: Ao clicar em 'Me localizar', deseleciona qualquer estação para mostrar o mapa completo
-          onSelectEstacao("all");
-          alert("Funcionalidade 'Me localizar' a ser implementada com a API de Geolocation.");
-        }}
-      >
-        <div className="flex items-center justify-center space-x-2">
-          <span>📍 Me localizar</span>
-        </div>
-      </button>
-
       <div className="mb-4">
         <h3 className="font-semibold text-sm mb-2 text-gray-700">Tipo</h3>
         <div className="flex space-x-2 p-1 rounded-lg border border-gray-200 bg-gray-50">
