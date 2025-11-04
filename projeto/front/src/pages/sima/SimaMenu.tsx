@@ -84,23 +84,24 @@ const MapIcon: React.FC<IconProps> = (props) => (
 const Sidebar: React.FC = () => {
   const location = useLocation();
 
+  // --- ITENS DE MENU MODIFICADOS ---
   const menuItems: MenuItem[] = [
     { label: "Início", path: "/", icon: HomeIcon },
-    { label: "Tabelas", path: "/sima-table", icon: TableIcon },
-    { label: "Gráficos", path: "/sima-graph", icon: ChartIcon },
-    { label: "Mapas", path: "/sima-map", icon: MapIcon },
+    { label: "Informações do Projeto", path: "/info", icon: HomeIcon },
+    // Adicione mais links de navegação aqui se necessário
   ];
 
   const isActive = (path: string) => location.pathname === path;
 
   return (
     <aside
-      className="fixed top-[30px] left-0 h-[calc(100vh-30px)] w-64 p-6 flex flex-col shadow-xl z-20"
+      className="left-0 h-screen w-64 p-6 flex flex-col shadow-xl z-20"
       style={{
         background: "linear-gradient(to bottom, #2f2f2f, #3a3a3a, #4b4b4b)",
       }}
     >
       <div className="flex flex-col flex-grow">
+        {/* --- Seção do Logo (Sem alterações) --- */}
         <div
           className="flex items-center mb-8 pb-4 border-b"
           style={{ borderColor: theme.border }}
@@ -116,6 +117,7 @@ const Sidebar: React.FC = () => {
           </div>
         </div>
 
+        {/* --- Navegação Principal (Modificada) --- */}
         <nav className="flex flex-col gap-2 mb-8" aria-label="Menu principal">
           <h2 className="text-xs font-semibold uppercase text-gray-500 mb-2">
             Navegação
@@ -124,7 +126,7 @@ const Sidebar: React.FC = () => {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center gap-2 p-3 rounded-lg font-medium transition-all duration-200 ${
+              className={`flex items-center gap-3 p-3 rounded-lg font-medium transition-all duration-200 ${ // (gap-3 para mais espaço)
                 isActive(item.path)
                   ? "shadow-md scale-[1.02] text-white"
                   : "text-gray-300 hover:text-white hover:bg-gray-700/70"
@@ -135,14 +137,56 @@ const Sidebar: React.FC = () => {
                   : "transparent",
               }}
             >
-              <item.icon active={isActive(item.path)} />
+              {/* --- Ícone Lucide renderizado --- */}
+              <item.icon className="w-5 h-5 flex-shrink-0" />
               <span>{item.label}</span>
             </Link>
           ))}
         </nav>
 
+        {/* --- NOVA SEÇÃO DE PROJETOS --- */}
+        <div className="mb-8">
+          <h2 className="text-xs font-semibold uppercase text-gray-500 mb-3">
+            Projetos
+          </h2>
+          <div className="grid grid-cols-2 gap-4">
+            {/* --- Botão Projeto Furnas --- */}
+            <div
+              className="group relative aspect-square rounded-lg overflow-hidden shadow-lg cursor-pointer transition-all duration-300 hover:scale-[1.03] hover:shadow-xl"
+              title="Projeto Furnas (sem link)"
+            >
+              <img
+                src="/furnas.jpg"
+                alt="Projeto Furnas"
+                className="w-full h-full object-cover transition-opacity duration-300 group-hover:opacity-80"
+              />
+              <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-all duration-300"></div>
+              <span className="absolute bottom-2 left-2 text-sm font-bold text-white drop-shadow-md">
+                Furnas
+              </span>
+            </div>
+
+            {/* --- Botão Projeto Balcar --- */}
+            <div
+              className="group relative aspect-square rounded-lg overflow-hidden shadow-lg cursor-pointer transition-all duration-300 hover:scale-[1.03] hover:shadow-xl"
+              title="Projeto Balcar (sem link)"
+            >
+              <img
+                src="/balcar.png"
+                alt="Projeto Balcar"
+                className="w-full h-full object-cover transition-opacity duration-300 group-hover:opacity-80"
+              />
+              <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-all duration-300"></div>
+              <span className="absolute bottom-2 left-2 text-sm font-bold text-white drop-shadow-md">
+                Balcar
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* --- Seção "Sobre" (Movida para o final) --- */}
         <div
-          className="mt-auto pt-4 border-t"
+          className="mt-auto pt-4 border-t" // mt-auto garante que ficará no rodapé
           style={{ borderColor: theme.border }}
         >
           <h2 className="text-xs font-semibold uppercase text-gray-500 mb-2">
@@ -187,7 +231,7 @@ const HomePage: React.FC = () => {
     <div style={{ background: theme.background }}>
       {/* Hero */}
       <div
-        className="pt-24 pb-16 px-12 text-center relative overflow-hidden rounded-b-3xl shadow-xl"
+        className="pt-8 pb-8 px-12 text-center relative overflow-hidden rounded-b-3xl shadow-xl"
         style={{
           background: "linear-gradient(to bottom right, #f1f1f1, #dcdcdc, #bfbfbf)",
         }}
@@ -301,7 +345,7 @@ const AppLayout: React.FC = () => (
   >
     <Sidebar />
     <main
-      className="flex-1 ml-64 overflow-y-auto pt-[30px]"
+      className="flex-1 overflow-y-auto"
       style={{
         background: theme.background,
       }}
