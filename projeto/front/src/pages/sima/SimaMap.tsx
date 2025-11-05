@@ -2,9 +2,23 @@ import React, { useState, useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup, CircleMarker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { colorsSima } from "../../components/Sima/data/mockData";
 
 // --- Interfaces e Funções Úteis (Mantidas) ---
+
+interface ColorPalette {
+  background: string;
+  surface: string;
+  primary: string;
+  secondary: string;
+}
+
+
+const colorsSima: ColorPalette = {
+    background: '#F3F7FB',
+    surface: '#FFFFFF',
+    primary: '#008080',
+    secondary: '#00CED1',
+};
 
 interface ImageMap {
   [key: string]: string;
@@ -232,20 +246,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           />
         </div>
       </div>
-
-      <button
-        className={`w-full p-2 mb-6 rounded-lg font-semibold text-white shadow-md transition-colors hover:opacity-90`}
-        style={{ backgroundColor: colorsSima.primary }}
-        onClick={() => {
-          // NOVO: Ao clicar em 'Me localizar', deseleciona qualquer estação para mostrar o mapa completo
-          onSelectEstacao("all");
-          alert("Funcionalidade 'Me localizar' a ser implementada com a API de Geolocation.");
-        }}
-      >
-        <div className="flex items-center justify-center space-x-2">
-          <span>📍 Me localizar</span>
-        </div>
-      </button>
 
       <div className="mb-4">
         <h3 className="font-semibold text-sm mb-2 text-gray-700">Tipo</h3>
