@@ -18,6 +18,7 @@ import FurnasMenu from "./pages/furnas/FurnasMenu";
 import FurnasTable from "./pages/furnas/PageFurnasTable";
 import FurnasGraph from "./pages/furnas/FurnasGraph";
 import FurnasMap from "./pages/furnas/FurnasMap";
+import FurnasInfo from "./pages/furnas/FurnasInfo.tsx"
 
 function App() {
   return (
@@ -64,6 +65,7 @@ function AppWithRouter() {
           <Route path="/furnas-table" element={<FurnasTable />} />
           <Route path="/furnas-graph" element={<FurnasGraph />} />
           <Route path="/furnas-map" element={<FurnasMap />} />
+          <Route path="/furnas-info" element={<FurnasInfo />} />
         </Routes>
       </div>
     </div>
