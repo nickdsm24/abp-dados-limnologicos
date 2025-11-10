@@ -1,23 +1,37 @@
-import React, { useState, useEffect, useMemo } from "react";
+99import React, { useState, useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
-interface ColorPalette {
-  background: string;
-  surface: string;
-  primary: string;
-  secondary: string;
-}
+// Paleta de cores
+const colors = {
+  // Cores Primárias/Secundárias para Ênfase e Marca (Tema "Balcar")
+  primary: '#047857',     // Verde Esmeralda Escuro (Cor Balcar)
+  secondary: '#10B981',   // Verde Limão/Menta Vibrante (para Sítios/detalhes)
+  white: '#FFFFFF',       // Cor do texto em botões primários
 
-const colors: ColorPalette = {
-  background: '#F3F7FB',
-  surface: '#FFFFFF',
-  primary: '#CC5500',
-  secondary: '#FF8C00',
+  // Cores da Sidebar (Tema Escuro - Neutro)
+  sidebarBg: '#1E293B',     // Fundo Principal da Sidebar (Slate 800)
+  sidebarBorder: '#334155', // Borda sutil e separadores (Slate 700)
+  sidebarItem: '#334155',   // Fundo de itens não selecionados (Slate 700)
+  sidebarHover: '#475569',   // Fundo de hover (Slate 600)
+  sidebarText: '#F8FAFC',     // Cor principal do texto (White/Slate 50)
+  sidebarTextMuted: '#94A3B8', // Cor do texto secundário/muted (Slate 400)
+
+  // Cores do Mapa (UI Neutra)
+  mapPopupBg: '#334155',   // Fundo do Popup do mapa (Slate 700)
+  mapPopupText: '#F8FAFC', // Texto do Popup do mapa (White/Slate 50)
+
+  // Cores dos Marcadores (Entidades)
+  mapMarkerReservatorio: '#047857', // Verde Esmeralda Escuro (Balcar)
+  mapMarkerSite: '#10B981',       // Verde Limão/Menta Vibrante (Sítio Balcar)
+
+  // Outras cores do sistema (para consistência)
+  mapMarkerFurnas: '#1D4ED8',
+  mapMarkerSima: '#C2410C',
 };
 
-// --- Interfaces e Funções Úteis (Mantidas) ---
+// --- Interfaces e Funções Úteis ---
 
 interface ImageMap {
   [key: string]: string;
@@ -49,21 +63,21 @@ const formatNameForImageKey = (name: string): string => {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s/g, "-");
-    
-    // Garantir que nomes compostos sejam mantidos
-    const namesToMatch = [
-      'mascarenhas-de-moraes',
-      'serra-da-mesa',
-      'tres-marias',
-      'santo-antonio',
-    ];
-  
-    for (const matchName of namesToMatch) {
-      if (formattedName.startsWith(matchName)) {
-        return matchName;
-      }
+
+  // Garantir que nomes compostos sejam mantidos
+  const namesToMatch = [
+    'mascarenhas-de-moraes',
+    'serra-da-mesa',
+    'tres-marias',
+    'santo-antonio',
+  ];
+
+  for (const matchName of namesToMatch) {
+    if (formattedName.startsWith(matchName)) {
+      return matchName;
     }
-  
+  }
+
   return formattedName;
 };
 
@@ -94,17 +108,22 @@ interface ApiResponse<T> {
   data: T[];
 }
 
-// --- Tipos e Funções da Sidebar (ADAPTADOS) ---
+// --- Tipos e Funções da Sidebar ---
 
 type TipoFiltroBalcar = "Todos" | "Reservatório" | "Sitio";
 type StatusFiltro = "Todos" | "Aberto" | "Fechado";
 type DataItemBalcar = (Reservatorio & { type: 'reservatorio' }) | (Sitio & { type: 'sitio' });
 
 const getIcon = (isReservatorio: boolean) => isReservatorio ? "💧" : "🔌"; // Sítio = Plug Elétrico
-const getIconColorClass = (isReservatorio: boolean) => isReservatorio ? "text-red-600 bg-red-100" : "text-green-600 bg-green-100";
+
+// Usando o objeto 'colors' para os ícones
+const getIconBgStyle = (isReservatorio: boolean) => ({
+  backgroundColor: isReservatorio ? colors.primary : colors.secondary, // Verde escuro e verde claro
+  color: colors.white,
+});
 
 
-// --- Componente: SidebarItem (Adaptado para Balcar) ---
+// --- Componente: SidebarItem ---
 
 const SidebarItemBalcar: React.FC<{
   item: DataItemBalcar,
@@ -117,13 +136,13 @@ const SidebarItemBalcar: React.FC<{
   const idString = `${item.type}-${isReservatorio ? item.idreservatorio : item.idsitio}`;
 
   const statusText = item.status === 'Fechado' ? "Fechado" : "Aberto";
-  const statusColor = item.status === 'Fechado' ? "text-red-600" : "text-green-600";
+  const statusColor = item.status === 'Fechado' ? "text-red-400" : "text-green-400";
 
-  // Capacidade / Simulação de Carga ou Nível
   const itemID = isReservatorio ? item.idreservatorio : item.idsitio;
   const capacidade = Math.round(((itemID * 19) % 100) * 0.9) + 1;
 
   const barColor = capacidade > 70 ? "bg-green-500" : capacidade > 40 ? "bg-yellow-500" : "bg-red-500";
+
 
   const infoText = isReservatorio
     ? `Controle de Nível e Vazão` : `Conectado ao reservatório: ${reservatorioNameMap[item.idreservatorio] || "N/A"}`;
@@ -131,32 +150,40 @@ const SidebarItemBalcar: React.FC<{
 
   return (
     <div
-      className={`p-3 border rounded-lg cursor-pointer transition-colors shadow-sm 
-        ${isSelected ? 'border-2 border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:bg-gray-50'}`}
+      className={`p-3 border rounded-lg cursor-pointer transition-colors shadow-sm relative`}
+      style={{
+        backgroundColor: isSelected ? colors.sidebarHover : colors.sidebarItem,
+        borderColor: isSelected ? colors.primary : colors.sidebarBorder, // Borda 'primary' (Verde) quando selecionado
+        borderStyle: 'solid',
+        borderWidth: isSelected ? '2px' : '1px',
+      }}
       onClick={() => onSelect(idString)}
     >
       <div className={`flex items-center space-x-3 mb-2`}>
-        <div className={`p-2 rounded-full ${getIconColorClass(isReservatorio)} text-lg`}>
+        <div
+          className={`p-2 rounded-full text-lg`}
+          style={getIconBgStyle(isReservatorio)}
+        >
           {getIcon(isReservatorio)}
         </div>
         <div className="flex-1">
-          <h4 className="font-semibold text-gray-800">{item.nome}</h4>
+          <h4 className="font-semibold" style={{ color: colors.sidebarText }}>{item.nome}</h4>
         </div>
         <span className={`text-xs font-medium ${statusColor}`}>{statusText}</span>
       </div>
 
-      <p className="text-xs text-gray-500 mt-1">{infoText}</p>
-      <p className="text-xs text-gray-500">{horaText}</p>
+      <p className="text-xs mt-1" style={{ color: colors.sidebarTextMuted }}>{infoText}</p>
+      <p className="text-xs" style={{ color: colors.sidebarTextMuted }}>{horaText}</p>
 
-      <div className="mt-2 text-xs text-gray-600">
+      <div className="mt-2 text-xs" style={{ color: colors.sidebarTextMuted }}>
         Carga / Nível (Simulado)
         <div className="flex items-center space-x-2">
-          <div className="flex-1 w-full h-1 bg-gray-200 rounded-full">
+          <div className="flex-1 w-full h-1 bg-gray-600 rounded-full">
             <div className={`h-1 rounded-full ${barColor}`}
               style={{ width: `${capacidade}%` }}>
             </div>
           </div>
-          <span className="font-medium">{capacidade}%</span>
+          <span className="font-medium" style={{ color: colors.sidebarText }}>{capacidade}%</span>
         </div>
       </div>
     </div>
@@ -164,7 +191,7 @@ const SidebarItemBalcar: React.FC<{
 };
 
 
-// --- Componente: Sidebar (Adaptado para Balcar) ---
+// --- Componente: Sidebar ---
 
 interface SidebarPropsBalcar {
   tipoFiltro: TipoFiltroBalcar;
@@ -192,54 +219,95 @@ const SidebarBalcar: React.FC<SidebarPropsBalcar> = ({
   reservatorioNameMap
 }) => {
   return (
-    <div className="w-96 bg-white p-4 overflow-y-auto border-r border-gray-200 shadow-xl flex-shrink-0"
-      style={{ height: "100%", zIndex: 10 }}>
+    <div
+      className="w-96 p-4 overflow-y-auto shadow-xl flex-shrink-0"
+      style={{
+        height: "100%",
+        zIndex: 10,
+        backgroundColor: colors.sidebarBg, // Cor de fundo da sidebar
+        borderRight: `1px solid ${colors.sidebarBorder}`, // Borda sutil
+        color: colors.sidebarText // Cor do texto base
+      }}
+    >
 
-      <h2 className="text-xl font-bold mb-1 text-gray-700">Localizações BALCAR</h2>
-      <p className="text-sm text-gray-500 mb-4">{filteredItems.length} pontos encontrados</p>
+      <h2 className="text-xl font-bold mb-1" style={{ color: colors.sidebarText }}>Localizações BALCAR</h2>
+      <p className="text-sm mb-4" style={{ color: colors.sidebarTextMuted }}>{filteredItems.length} pontos encontrados</p>
 
       <div className="flex justify-between space-x-3 mb-4">
-        <div className="flex-1 p-3 rounded-lg border border-gray-300 flex items-center shadow-sm">
-          <div className={`p-2 rounded-full ${getIconColorClass(true)} text-xl mr-2`}>💧</div>
+        {/* Card Reservatórios */}
+        <div
+          className="flex-1 p-3 rounded-lg flex items-center shadow-sm"
+          style={{ border: `1px solid ${colors.sidebarBorder}`, backgroundColor: colors.sidebarItem }}
+        >
+
+          <div
+            className={`p-2 rounded-full text-xl mr-2`}
+            style={getIconBgStyle(true)}
+          >💧</div>
           <div>
-            <p className="text-sm text-gray-500">Reservatórios</p>
-            <p className="text-xl font-bold text-gray-800">{totalReservatorios}</p>
+            <p className="text-sm" style={{ color: colors.sidebarTextMuted }}>Reservatórios</p>
+            <p className="text-xl font-bold" style={{ color: colors.sidebarText }}>{totalReservatorios}</p>
           </div>
         </div>
-        <div className="flex-1 p-3 rounded-lg border border-gray-300 flex items-center shadow-sm">
-          <div className={`p-2 rounded-full ${getIconColorClass(false)} text-xl mr-2`}>🔌</div>
+        {/* Card Sítios */}
+        <div
+          className="flex-1 p-3 rounded-lg flex items-center shadow-sm"
+          style={{ border: `1px solid ${colors.sidebarBorder}`, backgroundColor: colors.sidebarItem }}
+        >
+
+          <div
+            className={`p-2 rounded-full text-xl mr-2`}
+            style={getIconBgStyle(false)}
+          >🔌</div>
           <div>
-            <p className="text-sm text-gray-500">Sítios</p>
-            <p className="text-xl font-bold text-gray-800">{totalSitios}</p>
+            <p className="text-sm" style={{ color: colors.sidebarTextMuted }}>Sítios</p>
+            <p className="text-xl font-bold" style={{ color: colors.sidebarText }}>{totalSitios}</p>
           </div>
         </div>
       </div>
 
       <div className="mb-4">
         <div className="relative">
-          <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" style={{ color: colors.sidebarTextMuted }} fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
           <input
             type="text"
             placeholder="Buscar por nome ou descrição..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+            className="w-full pl-10 pr-4 py-2 text-sm rounded-lg focus:ring-opacity-50"
+            style={{
+              border: `1px solid ${colors.sidebarBorder}`,
+              backgroundColor: colors.sidebarItem, // Fundo do input
+              color: colors.sidebarText, // Texto digitado
+              // Adicionando foco com a cor primária (Verde)
+              '--tw-ring-color': colors.primary,
+            }}
           />
         </div>
       </div>
 
-      <div className="mb-4">
-        <h3 className="font-semibold text-sm mb-2 text-gray-700">Tipo</h3>
-        <div className="flex space-x-2 p-1 rounded-lg border border-gray-200 bg-gray-50">
+      <div className="mb-4 pt-6">
+        <h3 className="font-semibold text-sm mb-2" style={{ color: colors.sidebarText }}>Tipo</h3>
+        <div
+          className="flex space-x-2 p-1 rounded-lg border"
+          style={{
+            borderColor: colors.sidebarBorder,
+            backgroundColor: colors.sidebarItem // Fundo do container do filtro
+          }}
+        >
           {(["Todos", "Reservatório", "Sitio"] as TipoFiltroBalcar[]).map((tipo) => (
             <button
               key={tipo}
               onClick={() => setTipoFiltro(tipo)}
               className={`flex-1 p-2 rounded-lg text-sm font-medium transition-all ${tipoFiltro === tipo
                   ? `text-white shadow-sm`
-                  : "text-gray-700 hover:bg-gray-100"
+                  : "hover:opacity-80"
                 }`}
-              style={tipoFiltro === tipo ? { backgroundColor: colors.primary } : {}}
+              style={
+                tipoFiltro === tipo
+                  ? { backgroundColor: colors.primary, color: colors.white } // Botão Verde
+                  : { color: colors.sidebarText, backgroundColor: 'transparent' }
+              }
             >
               {tipo}
             </button>
@@ -248,17 +316,27 @@ const SidebarBalcar: React.FC<SidebarPropsBalcar> = ({
       </div>
 
       <div className="mb-6">
-        <h3 className="font-semibold text-sm mb-2 text-gray-700">Status (Simulado)</h3>
-        <div className="flex space-x-2 p-1 rounded-lg border border-gray-200 bg-gray-50">
+        <h3 className="font-semibold text-sm mb-2" style={{ color: colors.sidebarText }}>Status (Simulado)</h3>
+        <div
+          className="flex space-x-2 p-1 rounded-lg border"
+          style={{
+            borderColor: colors.sidebarBorder,
+            backgroundColor: colors.sidebarItem // Fundo do container do filtro
+          }}
+        >
           {(["Todos", "Aberto", "Fechado"] as StatusFiltro[]).map((status) => (
             <button
               key={status}
               onClick={() => setStatusFiltro(status)}
               className={`flex-1 p-2 rounded-lg text-sm font-medium transition-all ${statusFiltro === status
                   ? `text-white shadow-sm`
-                  : "text-gray-700 hover:bg-gray-100"
+                  : "hover:opacity-80"
                 }`}
-              style={statusFiltro === status ? { backgroundColor: colors.primary } : {}}
+              style={
+                statusFiltro === status
+                  ? { backgroundColor: colors.primary, color: colors.white } // Botão Verde
+                  : { color: colors.sidebarText, backgroundColor: 'transparent' }
+              }
             >
               {status}
             </button>
@@ -278,7 +356,7 @@ const SidebarBalcar: React.FC<SidebarPropsBalcar> = ({
             />
           ))
         ) : (
-          <p className="text-center text-gray-500 p-8 text-sm">Nenhuma localização encontrada com os filtros e busca atuais.</p>
+          <p className="text-center p-8 text-sm" style={{ color: colors.sidebarTextMuted }}>Nenhuma localização encontrada com os filtros e busca atuais.</p>
         )}
       </div>
 
@@ -287,7 +365,7 @@ const SidebarBalcar: React.FC<SidebarPropsBalcar> = ({
 };
 
 
-// --- Configurações do Leaflet (Mantidas) ---
+// --- Configurações do Leaflet ---
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -298,6 +376,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
 });
 
+// Ícone do Sítio Balcar (Fundo verde vibrante, borda verde escura)
 const siteIcon = new L.DivIcon({
   className: "custom-site-icon",
   html: `<div style="background-color: ${colors.secondary}; width: 15px; height: 15px; border-radius: 50%; border: 3px solid ${colors.primary}; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
@@ -309,7 +388,7 @@ const INITIAL_CENTER: [number, number] = [-14.235, -51.9253];
 const INITIAL_ZOOM = 4;
 
 
-// --- Componente Principal: BalcarMap (Atualizado) ---
+// --- Componente Principal: BalcarMap ---
 
 const BalcarMap: React.FC = () => {
   const [reservatorios, setReservatorios] = useState<Reservatorio[]>([]);
@@ -353,13 +432,13 @@ const BalcarMap: React.FC = () => {
           // Adicionando status simulado
           const reservatoriosComStatus = (reservatoriosData.data || []).map((r, i) => ({
             ...r,
-            status: i % 3 === 0 ? 'Fechado' : 'Aberto' as 'Aberto' | 'Fechado' 
+            status: i % 3 === 0 ? 'Fechado' : 'Aberto' as 'Aberto' | 'Fechado'
           }));
           const sitiosComStatus = (sitiosData.data || []).map((s, i) => ({
             ...s,
-            status: i % 5 === 0 ? 'Fechado' : 'Aberto' as 'Aberto' | 'Fechado' 
+            status: i % 5 === 0 ? 'Fechado' : 'Aberto' as 'Aberto' | 'Fechado'
           }));
-          
+
           setReservatorios(reservatoriosComStatus);
           setSitios(sitiosComStatus);
         } else {
@@ -393,25 +472,25 @@ const BalcarMap: React.FC = () => {
   }, [reservatorios, sitios]);
 
 
-  // LÓGICA DE FILTRAGEM (Baseada na Sidebar)
+  // Lógica de filtragem
   const filteredDataItems = useMemo(() => {
     let list = allData;
 
-    // 1. Filtrar por Tipo (Reservatório/Sitio)
+    // Filtrar por Tipo (Reservatório/Sitio)
     list = list.filter(item => {
       if (tipoFiltro === "Reservatório") return item.type === 'reservatorio';
       if (tipoFiltro === "Sitio") return item.type === 'sitio';
       return true; // "Todos"
     });
 
-    // 2. Filtrar por Status (Aberto/Fechado) - Usando o status simulado
+    // Filtrar por Status (Aberto/Fechado) - Usando o status simulado
     list = list.filter(item => {
       if (statusFiltro === "Aberto") return item.status === 'Aberto';
       if (statusFiltro === "Fechado") return item.status === 'Fechado';
       return true; // "Todos"
     });
 
-    // 3. Filtrar por Busca
+    // Filtrar por Busca
     if (searchText) {
       const lowerCaseSearch = searchText.toLowerCase();
       list = list.filter(item =>
@@ -422,7 +501,7 @@ const BalcarMap: React.FC = () => {
     return list;
   }, [allData, tipoFiltro, statusFiltro, searchText]);
 
-  // FILTRO FINAL (Aplica a seleção do item único)
+  // Filtro final (Aplica a seleção do item único)
   const filteredMapItems = useMemo(() => {
     if (selectedItemId === "all") {
       return filteredDataItems;
@@ -432,7 +511,7 @@ const BalcarMap: React.FC = () => {
       const idString = `${item.type}-${item.type === 'reservatorio' ? item.idreservatorio : item.idsitio}`;
       return idString === selectedItemId;
     });
-    return selected.length > 0 ? selected : filteredDataItems; 
+    return selected.length > 0 ? selected : filteredDataItems;
   }, [selectedItemId, filteredDataItems]);
 
   // Separa os itens filtrados para o mapa
@@ -444,7 +523,7 @@ const BalcarMap: React.FC = () => {
   const totalSitios = allData.filter(item => item.type === 'sitio').length;
 
 
-  // LÓGICA DE CENTRALIZAÇÃO DO MAPA
+  // lógica de centralização do mapa
   const mapSettings = useMemo(() => {
     if (selectedItemId !== "all") {
       const [type, idStr] = selectedItemId.split('-');
@@ -460,7 +539,7 @@ const BalcarMap: React.FC = () => {
       if (item && item.lat && item.lng) {
         return {
           center: [item.lat, item.lng] as [number, number],
-          zoom: 9, 
+          zoom: 9,
         };
       }
     }
@@ -476,7 +555,7 @@ const BalcarMap: React.FC = () => {
   }
 
   return (
-    // LAYOUT FLEXÍVEL
+    // Layout flexível
     <div className="flex" style={{ height: "calc(100vh - 80px)" }}>
 
       {/* Sidebar */}
@@ -487,11 +566,11 @@ const BalcarMap: React.FC = () => {
         setStatusFiltro={setStatusFiltro}
         searchText={searchText}
         setSearchText={setSearchText}
-        filteredItems={filteredDataItems} 
+        filteredItems={filteredDataItems}
         totalSitios={totalSitios}
         totalReservatorios={totalReservatorios}
         selectedItemId={selectedItemId}
-        onSelectItem={setSelectedItemId} 
+        onSelectItem={setSelectedItemId}
         reservatorioNameMap={reservatorioNameMap}
       />
 
@@ -524,7 +603,10 @@ const BalcarMap: React.FC = () => {
                 key={reservatorio.idreservatorio}
                 position={[reservatorio.lat, reservatorio.lng]}
               >
-                <Popup>
+                <Popup
+                  // Aplicando cores de popup do tema neutro
+                  style={{ backgroundColor: colors.mapPopupBg, color: colors.mapPopupText }}
+                >
                   {imageSrc && (
                     <img
                       src={imageSrc}
@@ -541,7 +623,8 @@ const BalcarMap: React.FC = () => {
                   )}
 
                   <h3
-                    style={{ color: colors.primary }}
+                    // Cor do título do popup (Verde Balcar)
+                    style={{ color: colors.mapMarkerReservatorio }}
                     className="font-bold text-lg"
                   >
                     Reservatório: {reservatorio.nome}
@@ -569,9 +652,12 @@ const BalcarMap: React.FC = () => {
                 position={[sitio.lat, sitio.lng]}
                 icon={siteIcon}
               >
-                <Popup>
+                <Popup
+                  style={{ backgroundColor: colors.mapPopupBg, color: colors.mapPopupText }}
+                >
                   <h3
-                    style={{ color: colors.secondary }}
+                    // Cor do título do Sítio (Verde Vibrante)
+                    style={{ color: colors.mapMarkerSite }}
                     className="font-bold text-lg"
                   >
                     Sítio: {sitio.nome}
