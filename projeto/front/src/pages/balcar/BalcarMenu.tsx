@@ -80,7 +80,7 @@ const Sidebar: React.FC = () => {
 
   return (
     <aside
-      className="fixed top-[30px] left-0 h-[calc(100vh-30px)] w-64 p-6 flex flex-col shadow-xl z-20"
+      className="left-0 h-screen w-64 p-6 flex flex-col shadow-xl z-20"
       style={{ backgroundColor: sidebarBg }}
     >
       <div className="flex flex-col flex-grow">
@@ -252,7 +252,7 @@ const NotFoundPage: React.FC = () => (
 const AppLayout: React.FC = () => (
   <div className="flex min-h-screen bg-gray-50">
     <Sidebar />
-    <main className="flex-1 ml-64 overflow-y-auto pt-[30px]">
+    <main className="flex-1 overflow-y-auto ">
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/balcar-table" element={<TabelasPage />} />
