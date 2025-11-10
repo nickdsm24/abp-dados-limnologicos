@@ -15,7 +15,6 @@ const app = express();
 app.use(cors(corsOptions));
 
 
-
 // Define a porta utilizada pelo servidor
 const PORT = process.env.PORT || 3000;
 

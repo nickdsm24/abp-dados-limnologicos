@@ -3,15 +3,15 @@ import { Link, Routes, Route, useLocation } from "react-router-dom";
 
 // --- Tema Global ---
 const theme = {
-  primary: "#4682B4",      // Azul Aço (moderado e elegante)
-  secondary: "#5EC2B7",    // Verde-água claro
-  accent: "#A7BBC7",       // Azul-cinza perolado
+  primary: "#4682B4", // Azul Aço (moderado e elegante)
+  secondary: "#5EC2B7", // Verde-água claro
+  accent: "#A7BBC7", // Azul-cinza perolado
 
   // Tons neutros
-  sidebarBg: "#2c2c2c",    
+  sidebarBg: "#2c2c2c",
   background: "linear-gradient(to bottom right, #f8f9fa, #d9d9d9, #b0b0b0)",
-  surface: "#ffffff",      
-  text: "#1a1a1a",         
+  surface: "#ffffff",
+  text: "#1a1a1a",
   textSecondary: "#555555",
   border: "#e0e0e0",
 
@@ -28,7 +28,7 @@ interface IconProps {
 interface MenuItem {
   label: string;
   path: string;
-  icon: React.FC<IconProps>;
+  icon: React.FC<any>; // Permitindo ícones com ou sem 'active'
 }
 
 // --- Componentes de Ícones ---
@@ -80,6 +80,15 @@ const MapIcon: React.FC<IconProps> = (props) => (
   </IconBase>
 );
 
+// --- NOVO ÍCONE DE INFORMAÇÃO ---
+const InfoIcon: React.FC<IconProps> = (props) => (
+  <IconBase {...props}>
+    <circle cx="12" cy="12" r="10" />
+    <line x1="12" y1="16" x2="12" y2="12" />
+    <line x1="12" y1="8" x2="12.01" y2="8" />
+  </IconBase>
+);
+
 // --- Sidebar ---
 const Sidebar: React.FC = () => {
   const location = useLocation();
@@ -87,8 +96,7 @@ const Sidebar: React.FC = () => {
   // --- ITENS DE MENU MODIFICADOS ---
   const menuItems: MenuItem[] = [
     { label: "Início", path: "/", icon: HomeIcon },
-    { label: "Informações do Projeto", path: "/info", icon: HomeIcon },
-    // Adicione mais links de navegação aqui se necessário
+    { label: "Informações do Projeto", path: "/info", icon: InfoIcon }, // Ícone alterado
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -126,7 +134,7 @@ const Sidebar: React.FC = () => {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center gap-3 p-3 rounded-lg font-medium transition-all duration-200 ${ // (gap-3 para mais espaço)
+              className={`flex items-center gap-3 p-3 rounded-lg font-medium transition-all duration-200 ${
                 isActive(item.path)
                   ? "shadow-md scale-[1.02] text-white"
                   : "text-gray-300 hover:text-white hover:bg-gray-700/70"
@@ -137,8 +145,11 @@ const Sidebar: React.FC = () => {
                   : "transparent",
               }}
             >
-              {/* --- Ícone Lucide renderizado --- */}
-              <item.icon className="w-5 h-5 flex-shrink-0" />
+              {/* --- Ícone renderizado (com 'active' prop) --- */}
+              <item.icon
+                active={isActive(item.path)}
+                className="w-5 h-5 flex-shrink-0"
+              />
               <span>{item.label}</span>
             </Link>
           ))}
@@ -150,10 +161,10 @@ const Sidebar: React.FC = () => {
             Projetos
           </h2>
           <div className="grid grid-cols-2 gap-4">
-            {/* --- Botão Projeto Furnas --- */}
-            <div
+            {/* --- Botão Projeto Furnas (AGORA É LINK) --- */}
+            <Link
+              to="/furnas"
               className="group relative aspect-square rounded-lg overflow-hidden shadow-lg cursor-pointer transition-all duration-300 hover:scale-[1.03] hover:shadow-xl"
-              title="Projeto Furnas (sem link)"
             >
               <img
                 src="/furnas.jpg"
@@ -164,12 +175,12 @@ const Sidebar: React.FC = () => {
               <span className="absolute bottom-2 left-2 text-sm font-bold text-white drop-shadow-md">
                 Furnas
               </span>
-            </div>
+            </Link>
 
-            {/* --- Botão Projeto Balcar --- */}
-            <div
+            {/* --- Botão Projeto Balcar (AGORA É LINK) --- */}
+            <Link
+              to="/balcar"
               className="group relative aspect-square rounded-lg overflow-hidden shadow-lg cursor-pointer transition-all duration-300 hover:scale-[1.03] hover:shadow-xl"
-              title="Projeto Balcar (sem link)"
             >
               <img
                 src="/balcar.png"
@@ -180,7 +191,7 @@ const Sidebar: React.FC = () => {
               <span className="absolute bottom-2 left-2 text-sm font-bold text-white drop-shadow-md">
                 Balcar
               </span>
-            </div>
+            </Link>
           </div>
         </div>
 
@@ -233,7 +244,8 @@ const HomePage: React.FC = () => {
       <div
         className="pt-8 pb-8 px-12 text-center relative overflow-hidden rounded-b-3xl shadow-xl"
         style={{
-          background: "linear-gradient(to bottom right, #f1f1f1, #dcdcdc, #bfbfbf)",
+          background:
+            "linear-gradient(to bottom right, #f1f1f1, #dcdcdc, #bfbfbf)",
         }}
       >
         <div
@@ -355,6 +367,8 @@ const AppLayout: React.FC = () => (
         <Route path="/sima-table" element={<TabelasPage />} />
         <Route path="/sima-graph" element={<GraficosPage />} />
         <Route path="/sima-map" element={<MapasPage />} />
+        {/* Links para /furnas e /balcar levarão ao NotFoundPage
+            a menos que sejam definidos em um roteador de nível superior */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </main>
