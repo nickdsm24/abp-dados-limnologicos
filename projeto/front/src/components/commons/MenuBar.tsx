@@ -5,7 +5,7 @@ import { Menu, X, Home } from "lucide-react"; // Adicionei Waves para o ícone d
 // Cores do Projeto:
 // Primary Blue: #1777af
 // Primary Dark Blue (Hover/Mobile BG): #136190 (custom shade)
-// Secondary Orange: #FFA500
+// Secondary Cyan: #FFA500
 
 /**
  * Componente de Menu de Navegação Superior.
