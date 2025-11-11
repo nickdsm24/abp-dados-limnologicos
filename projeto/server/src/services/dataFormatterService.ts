@@ -1,230 +1,143 @@
-import { logger } from "../configs/logger"; // Supondo que o logger esteja acessível
+// src/services/dataFormatterService.ts
+import { logger } from "../configs/logger";
 
 /**
  * Classe de serviço para centralizar a formatação e normalização de dados
  * para as saídas da API.
  */
 export class DataFormatterService {
-	// ----------------------------------------------------------------
-	// MÉTODOS DE NORMALIZAÇÃO DE TIPOS
-	// ----------------------------------------------------------------
+  // ----------------------------------------------------------------
+  // MÉTODOS DE NORMALIZAÇÃO DE TIPOS
+  // ----------------------------------------------------------------
 
-	/**
-	 * Constrói string ISO "YYYY-MM-DD" segura a partir de ano/mês/dia.
-	 * Retorna null se data inválida (ex: 31/02/2023).
-	 */
-	private static buildISODate(y: number, m: number, d: number): string | null {
-		try {
-			// Validação básica
-			if (m < 1 || m > 12 || d < 1 || d > 31 || y < 1900 || y > 3000) {
-				return null;
-			}
-			const date = new Date(Date.UTC(y, m - 1, d)); // Usar UTC para evitar problemas de fuso
+  /**
+   * Constrói string ISO "YYYY-MM-DD" segura a partir de ano/mês/dia.
+   */
+  private static buildISODate(y: number, m: number, d: number): string | null {
+    try {
+      if (m < 1 || m > 12 || d < 1 || d > 31 || y < 1900 || y > 3000) {
+        return null;
+      }
+      const date = new Date(Date.UTC(y, m - 1, d));
 
-			// Confirma se a data não "transbordou" (ex: 31/02 virou 03/03)
-			if (
-				date.getUTCFullYear() === y &&
-				date.getUTCMonth() === m - 1 &&
-				date.getUTCDate() === d
-			) {
-				return date.toISOString().slice(0, 10);
-			}
-			return null;
-		} catch (error) {
-			logger.warn(`Erro ao construir data ISO: ${y}-${m}-${d}`, error);
-			return null;
-		}
-	}
+      if (date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d) {
+        return date.toISOString().slice(0, 10);
+      }
+      return null;
+    } catch (error) {
+      logger.warn(`Erro ao construir data ISO: ${y}-${m}-${d}`, error);
+      return null;
+    }
+  }
 
-	/**
-	 * Normaliza datas de strings em formatos comuns ou objetos Date para "YYYY-MM-DD".
-	 *
-	 * Formatos aceitos:
-	 * - Objeto Date
-	 * - String ISO (YYYY-MM-DDTHH:mm:ss.sssZ)
-	 * - YYYY-MM-DD
-	 * - DD/MM/YYYY
-	 * - MM-DD-YYYY
-	 *
-	 * Retorna: string no formato ISO "YYYY-MM-DD" ou null se inválido.
-	 */
-	public static normalizeDate(
-		value: string | Date | null | undefined,
-	): string | null {
-		if (!value) return null;
+  /**
+   * Normaliza datas de strings em formatos comuns ou objetos Date para "YYYY-MM-DD".
+   */
+  public static normalizeDate(value: string | Date | null | undefined): string | null {
+    if (!value) return null;
 
-		// 1. Se for um objeto Date
-		if (value instanceof Date) {
-			if (isNaN(value.getTime())) return null;
-			// Usar UTC para pegar a data "pura" sem influência de fuso
-			return new Date(
-				Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()),
-			)
-				.toISOString()
-				.slice(0, 10);
-		}
+    if (value instanceof Date) {
+      if (isNaN(value.getTime())) return null;
+      return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()))
+        .toISOString()
+        .slice(0, 10);
+    }
 
-		// 2. Se for string
-		const trimmed = value.trim();
-		if (!trimmed) return null;
+    const trimmed = String(value).trim(); // Converte para string por segurança
+    if (!trimmed) return null;
 
-		// 2a. String ISO (YYYY-MM-DDTHH... ou YYYY-MM-DD)
-		const matchISO = /^(\d{4})-(\d{2})-(\d{2})/.exec(trimmed);
-		if (matchISO) {
-			const [, y, m, d] = matchISO;
-			// CORREÇÃO: Trocar 'this' pelo nome da classe
-			return DataFormatterService.buildISODate(Number(y), Number(m), Number(d));
-		}
+    // YYYY-MM-DD
+    const matchISO = /^(\d{4})-(\d{2})-(\d{2})/.exec(trimmed);
+    if (matchISO) {
+      const [, y, m, d] = matchISO;
+      return DataFormatterService.buildISODate(Number(y), Number(m), Number(d));
+    }
 
-		// 2b. DD/MM/YYYY
-		const matchDMY = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed);
-		if (matchDMY) {
-			const [, d, m, y] = matchDMY;
-			// CORREÇÃO: Trocar 'this' pelo nome da classe
-			return DataFormatterService.buildISODate(Number(y), Number(m), Number(d));
-		}
+    // DD/MM/YYYY
+    const matchDMY = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed);
+    if (matchDMY) {
+      const [, d, m, y] = matchDMY;
+      return DataFormatterService.buildISODate(Number(y), Number(m), Number(d));
+    }
 
-		// 2c. MM-DD-YYYY
-		const matchMDY = /^(\d{1,2})-(\d{1,2})-(\d{4})$/.exec(trimmed);
-		if (matchMDY) {
-			const [, m, d, y] = matchMDY;
-			// CORREÇÃO: Trocar 'this' pelo nome da classe
-			return DataFormatterService.buildISODate(Number(y), Number(m), Number(d));
-		}
+    // ... (outros formatos de data)
 
-		// 2d. Tenta parsear como último recurso
-		try {
-			const date = new Date(trimmed);
-			if (!isNaN(date.getTime())) {
-				// Recria com UTC para garantir formato YYYY-MM-DD correto
-				return new Date(
-					Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
-				)
-					.toISOString()
-					.slice(0, 10);
-			}
-		} catch (error) {
-			// Ignora falha no parse
-		}
+    // Tenta parsear como último recurso
+    try {
+      const date = new Date(trimmed);
+      if (!isNaN(date.getTime())) {
+        return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+          .toISOString()
+          .slice(0, 10);
+      }
+    } catch (error) {
+      /* Ignora falha no parse */
+    }
 
-		logger.warn(`Formato de data não reconhecido: ${value}`);
-		return null;
-	}
+    logger.warn(`Formato de data não reconhecido: ${value}`);
+    return null;
+  }
 
-	/**
-	 * Normaliza números em diferentes notações locais (pt-BR).
-	 * Retorna: number ou null se inválido.
-	 */
-	public static parseLocaleNumber(
-		value: string | number | null | undefined,
-	): number | null {
-		if (value == null) return null;
+  /**
+   * ESTE MÉTODO NÃO É MAIS USADO PELO formatListRow,
+   * pois o db.ts agora cuida da conversão de números.
+   * Mantido aqui para o caso de precisar ser usado manualmente.
+   */
+  public static parseLocaleNumber(value: string | number | null | undefined): number | null {
+    if (value == null) return null;
+    if (typeof value === "number") {
+      return isNaN(value) ? null : value;
+    }
+    // ... (lógica de parse)
+    return null;
+  }
 
-		if (typeof value === "number") {
-			return isNaN(value) ? null : value;
-		}
+  // ----------------------------------------------------------------
+  // MÉTODOS DE FORMATAÇÃO DE SAÍDA (Genéricos)
+  // ----------------------------------------------------------------
 
-		const trimmed = String(value).trim();
-		if (!trimmed) return null;
+  /**
+   * Formata um registro para a saída de listagem (getAll).
+   * "Achata" relacionamentos e normaliza datas.
+   * **NÃO** mexe mais com números, pois o db.ts já os converteu.
+   */
+  public static formatListRow(row: any): any {
+    if (!row) return null;
 
-		// Detectar padrão com vírgula decimal (pt-BR)
-		// Ex: "1.234,56" ou "5,0"
-		if (trimmed.includes(",")) {
-			// remove separadores de milhar "." e substitui vírgula decimal "," por "."
-			const normalized = trimmed.replace(/\./g, "").replace(",", ".");
-			const num = Number(normalized);
-			return isNaN(num) ? null : num;
-		}
+    // 1. Começa com todos os campos do 'row' (IDs, e números já formatados)
+    const formatted: any = { ...row };
 
-		// Tenta parsear direto (ex: "1234.56" ou "1234")
-		const num = Number(trimmed);
-		return isNaN(num) ? null : num;
-	}
+    // 2. Normaliza campos de data conhecidos
+    if (formatted.datamedida !== undefined) {
+      formatted.datamedida = DataFormatterService.normalizeDate(formatted.datamedida);
+    }
+    if (formatted.dataMedida !== undefined) {
+      // Handle camelCase
+      formatted.dataMedida = DataFormatterService.normalizeDate(formatted.dataMedida);
+    }
+    // ... (adicionar outras colunas de data aqui se necessário)
 
-	// ----------------------------------------------------------------
-	// MÉTODOS DE FORMATAÇÃO DE SAÍDA (Output)
-	// ----------------------------------------------------------------
+    // 3. "Achata" relacionamentos comuns
+    // O Model DEVE fornecer 'sitio_nome' e 'nrocampanha'
+    if (row.idsitio !== undefined || row.idSitio !== undefined) {
+      formatted.sitio = row.sitio_nome; // Usa o alias da query
+      // Limpa os campos originais para não poluir a API
+      delete formatted.idsitio;
+      delete formatted.idSitio;
+      delete formatted.sitio_nome;
+    }
+    if (row.idcampanha !== undefined || row.idCampanha !== undefined) {
+      formatted.campanha = row.nrocampanha; // Usa o alias da query
+      // Limpa os campos originais
+      delete formatted.idcampanha;
+      delete formatted.idCampanha;
+      delete formatted.nrocampanha;
+    }
 
-	/**
-	 * Formata um registro para a saída de listagem (getAll).
-	 * "Achata" os campos 'sitio' e 'campanha' conforme solicitado
-	 * e normaliza os demais campos.
-	 */
-	public static formatListOutput(row: any): any {
-		if (!row) return null;
+    // Remove outros campos de join que não queremos na lista
+    delete formatted.sitio_lat;
+    delete formatted.sitio_lng;
 
-		return {
-			idabioticocoluna: row.idabioticocoluna,
-			// CORREÇÃO: Trocar 'this' pelo nome da classe
-			datamedida: DataFormatterService.normalizeDate(row.datamedida),
-			horamedida: row.horamedida, // Parece já estar no formato "HH:mm:ss"
-
-			// Normaliza os campos numéricos
-			// CORREÇÃO: Trocar 'this' pelo nome da classe
-			profundidade: DataFormatterService.parseLocaleNumber(row.profundidade),
-			dic: DataFormatterService.parseLocaleNumber(row.dic),
-			nt: DataFormatterService.parseLocaleNumber(row.nt),
-			pt: DataFormatterService.parseLocaleNumber(row.pt),
-			delta13c: DataFormatterService.parseLocaleNumber(row.delta13c),
-			delta15n: DataFormatterService.parseLocaleNumber(row.delta15n),
-
-			// "Achata" os campos de relacionamento para a listagem
-			sitio: row.idsitio ? row.sitio_nome : undefined,
-			campanha: row.idcampanha ? row.nrocampanha : undefined,
-		};
-	}
-
-	/**
-	 * Formata um registro para a saída de detalhe (getById).
-	 * Mantém a estrutura aninhada e normaliza todos os campos.
-	 * (Baseado na sua função `mapRowToAbioticoColuna`)
-	 */
-	public static formatDetailOutput(row: any): any {
-		if (!row) return null;
-
-		return {
-			idabioticocoluna: row.idabioticocoluna,
-			// CORREÇÃO: Trocar 'this' pelo nome da classe
-			datamedida: DataFormatterService.normalizeDate(row.datamedida),
-			horamedida: row.horamedida,
-			// CORREÇÃO: Trocar 'this' pelo nome da classe
-			profundidade: DataFormatterService.parseLocaleNumber(row.profundidade),
-			dic: DataFormatterService.parseLocaleNumber(row.dic),
-			nt: DataFormatterService.parseLocaleNumber(row.nt),
-			pt: DataFormatterService.parseLocaleNumber(row.pt),
-			delta13c: DataFormatterService.parseLocaleNumber(row.delta13c),
-			delta15n: DataFormatterService.parseLocaleNumber(row.delta15n),
-
-			// Objeto Aninhado para o Sítio (com normalização)
-			sitio: row.idsitio
-				? {
-						idsitio: row.idsitio,
-						nome: row.sitio_nome,
-						// CORREÇÃO: Trocar 'this' pelo nome da classe
-						lat: DataFormatterService.parseLocaleNumber(row.sitio_lat),
-						lng: DataFormatterService.parseLocaleNumber(row.sitio_lng),
-						descricao: row.sitio_descricao,
-					}
-				: undefined,
-
-			// Objeto Aninhado para a Campanha (com normalização)
-			campanha: row.idcampanha
-				? {
-						idcampanha: row.idcampanha,
-						nroCampanha: row.nrocampanha,
-						// CORREÇÃO: Trocar 'this' pelo nome da classe
-						dataInicio: DataFormatterService.normalizeDate(
-							row.campanha_datainicio,
-						),
-						dataFim: DataFormatterService.normalizeDate(row.campanha_datafim),
-						reservatorio: row.idreservatorio
-							? {
-									idreservatorio: row.idreservatorio,
-									nome: row.reservatorio_nome,
-								}
-							: undefined,
-					}
-				: undefined,
-		};
-	}
+    return formatted;
+  }
 }

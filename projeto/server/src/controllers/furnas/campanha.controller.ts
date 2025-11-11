@@ -1,73 +1,36 @@
+//src/controllers/furnas/campanha.controller.ts
 import { Request, Response } from "express";
-import { furnasPool } from "../../configs/db";
 import { logger } from "../../configs/logger";
+// 1. Importa os Serviços (formatação e exportação)
+import { DataFormatterService } from "../../services/dataFormatterService";
+import { ExportService, ExportFileOptions } from "../../services/exportService";
+// 2. Importa o Model
+import { CampanhaModel } from "../../models/campanha.model";
 
 const PAGE_SIZE = Number(process.env.PAGE_SIZE) || 10;
 
-// Mapeamento
-const mapRowToCampanha = (row: any) => ({
-    idcampanha: row.idcampanha,
-    nrocampanha: row.nrocampanha,
-    datainicio: row.datainicio,
-    datafim: row.datafim,
-    
-    // Objeto Aninhado para a Instituição
-    instituicao: row.idinstituicao
-        ? {
-            idinstituicao: row.idinstituicao,
-            nome: row.instituicao_nome,
-          }
-        : undefined,
-    
-    // Objeto Aninhado para o Reservatório
-    reservatorio: row.idreservatorio
-        ? {
-            idreservatorio: row.idreservatorio,
-            nome: row.reservatorio_nome,
-            lat: row.reservatorio_lat,
-            lng: row.reservatorio_lng,
-          }
-        : undefined,
-});
+// --- ENDPOINTS ---
 
-// getAll
+/**
+ * Endpoint: getAll
+ */
 export const getAll = async (req: Request, res: Response): Promise<void> => {
     try {
-        // Padronizando leitura de query params
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || PAGE_SIZE;
-        const offset = (page - 1) * limit;
 
-        const result = await furnasPool.query(
-            `
-            SELECT 
-                a.idcampanha,
-                a.nrocampanha,
-                a.datainicio,
-                a.datafim,
-                b.idinstituicao,
-                b.nome AS instituicao_nome,
-                c.idreservatorio,
-                c.nome AS reservatorio_nome,
-                c.lat AS reservatorio_lat,
-                c.lng AS reservatorio_lng
-            FROM tbcampanha AS a
-            LEFT JOIN tbinstituicao AS b 
-                ON a.idinstituicao = b.idinstituicao
-            LEFT JOIN tbreservatorio AS c 
-                ON a.idreservatorio = c.idreservatorio
-            ORDER BY c.nome, a.nrocampanha
-            LIMIT $1 OFFSET $2
-            `,
-            [limit, offset],
-        );
+        // 1. Pede os dados paginados ao Model (agora com filtros)
+        const { data: rawData, total } = await CampanhaModel.findPaginated({
+            filters: req.query, // Passa todos os query params como filtros
+            page,
+            limit,
+        });
 
-        const countResult = await furnasPool.query("SELECT COUNT(*) FROM tbcampanha");
-        const total = Number(countResult.rows[0].count);
+        // 2. Formata os dados "crus" usando o Service
+        //    (O mapRowToCampanha foi removido e substituído por isso)
+        const data = rawData.map(DataFormatterService.formatListRow);
 
-        // aplica o mapeamento
-        const data = result.rows.map(mapRowToCampanha);
-
+        // 3. Envia a resposta
         res.status(200).json({
             success: true,
             page,
@@ -81,52 +44,33 @@ export const getAll = async (req: Request, res: Response): Promise<void> => {
             message: error.message,
             stack: error.stack,
         });
-
         res.status(500).json({
             success: false,
-            error: "Erro ao realizar operação.", 
+            error: "Erro ao realizar operação.",
         });
     }
 };
 
+/**
+ * Endpoint: getById
+ */
 export const getById = async (req: Request, res: Response): Promise<void> => {
     try {
-        // Padronizando a leitura e conversão do ID
         const idCampanha = Number(req.params.idcampanha);
 
-        // Validação de ID
         if (isNaN(idCampanha)) {
             res.status(400).json({
                 success: false,
-                error: `ID ${req.params.idcampanha} inválido.`, 
+                error: `ID ${req.params.idcampanha} inválido.`,
             });
             return;
         }
 
-        const result = await furnasPool.query(
-            `
-            SELECT 
-                a.idcampanha,
-                a.nrocampanha,
-                a.datainicio,
-                a.datafim,
-                b.idinstituicao,
-                b.nome AS instituicao_nome,
-                c.idreservatorio,
-                c.nome AS reservatorio_nome,
-                c.lat AS reservatorio_lat,
-                c.lng AS reservatorio_lng
-            FROM tbcampanha AS a
-            LEFT JOIN tbinstituicao AS b 
-                ON a.idinstituicao = b.idinstituicao
-            LEFT JOIN tbreservatorio AS c 
-                ON a.idreservatorio = c.idreservatorio
-            WHERE a.idcampanha = $1
-            `,
-            [idCampanha]
-        );
+        // 1. Pede o dado ao Model
+        const rawData = await CampanhaModel.findById(idCampanha);
 
-        if (result.rows.length === 0) {
+        // 2. Verifica se foi encontrado
+        if (!rawData) {
             res.status(404).json({
                 success: false,
                 error: `Registro de campanha não encontrado.`,
@@ -134,9 +78,10 @@ export const getById = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        // Mapeia o resultado único
-        const data = mapRowToCampanha(result.rows[0]);
+        // 3. Formata o dado "cru" (seguindo o padrão, não formatamos detalhes)
+        const data = rawData; // Retorna os dados crus do model
 
+        // 4. Envia a resposta
         res.status(200).json({
             success: true,
             data,
@@ -146,10 +91,80 @@ export const getById = async (req: Request, res: Response): Promise<void> => {
             message: error.message,
             stack: error.stack,
         });
-
         res.status(500).json({
             success: false,
             error: "Erro ao realizar operação.",
+        });
+    }
+};
+
+/**
+ * Endpoint: exportData (NOVO)
+ */
+export const exportData = async (req: Request, res: Response): Promise<void> => {
+    try {
+        // 1. Extrai opções do body
+        const { format, range, includeHeaders, delimiter, encoding, filters, page, limit } =
+            req.body as ExportFileOptions & {
+                range: "page" | "all";
+                filters: any;
+                page?: number;
+                limit?: number;
+            };
+
+        const exportOptions: ExportFileOptions = {
+            format,
+            includeHeaders,
+            delimiter,
+            encoding,
+        };
+
+        let rawData: any[];
+
+        // 2. Busca os dados no Model com base no 'range'
+        if (range === "page") {
+            const { data } = await CampanhaModel.findPaginated({
+                filters: filters || {},
+                page: page || 1,
+                limit: limit || PAGE_SIZE,
+            });
+            rawData = data;
+        } else {
+            // range === 'all'
+            rawData = await CampanhaModel.findAll({
+                filters: filters || {},
+            });
+        }
+
+        // 3. Formata os dados para "lista"
+        const formattedData = rawData.map(DataFormatterService.formatListRow);
+
+        // 4. Gera o buffer do arquivo
+        const fileBuffer = await ExportService.generateExportFile(formattedData, exportOptions);
+
+        // 5. Define os headers da resposta
+        const fileName = `export_campanha_${new Date().toISOString().slice(0, 10)}.${format}`;
+
+        if (format === "xlsx") {
+            res.setHeader(
+                "Content-Type",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            );
+        } else {
+            res.setHeader("Content-Type", "text/csv; charset=" + (encoding || "utf-8"));
+        }
+        res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+
+        // 6. Envia o buffer como resposta
+        res.send(fileBuffer);
+    } catch (error: any) {
+        logger.error("Erro ao exportar dados de tbcampanha", {
+            message: error.message,
+            stack: error.stack,
+        });
+        res.status(500).json({
+            success: false,
+            error: "Erro ao gerar exportação.",
         });
     }
 };
