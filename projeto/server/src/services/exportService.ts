@@ -1,4 +1,4 @@
-// 1. A importação explícita de 'Buffer' foi REMOVIDA para usar o tipo global do Node.js
+// src/services/exportService.ts
 import * as exceljs from 'exceljs';
 import * as iconv from 'iconv-lite';
 import { logger } from '../configs/logger';

@@ -10,6 +10,10 @@ export const corsOptions: CorsOptions = {
       callback(new Error("Not allowed by CORS"));
     }
   },
-  methods: ["GET"], // Apenas SELECTs
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ["Content-Type", "Authorization"],
+  // Permite que o frontend (fetch) leia este cabeçalho
+  exposedHeaders: ['Content-Disposition'],
 };
+
+
