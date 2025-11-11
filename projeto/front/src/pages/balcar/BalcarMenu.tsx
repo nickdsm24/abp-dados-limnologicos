@@ -2,9 +2,9 @@ import { Link, useLocation, Routes, Route } from "react-router-dom";
 import React from "react";
 
 // --- Cores ---
-const primaryColor = "#006666";
-const secondaryColor = "#CFF47D";
-const sidebarBg = "#082020";
+const primaryColor = "#006666"; // Verde Corporativo
+const secondaryColor = "#CFF47D"; // Verde Claro
+//const sidebarBg = "#082020"; // Fundo da Sidebar (Não mais usado, mas mantido)
 
 // --- Tipagem ---
 interface IconProps {
@@ -13,7 +13,7 @@ interface IconProps {
 interface MenuItem {
   label: string;
   path: string;
-  icon: React.FC<IconProps>;
+  icon: React.FC<any>; // Permite ícones com ou sem 'active'
 }
 
 // --- Componentes de Ícones ---
@@ -65,25 +65,36 @@ const MapIcon: React.FC<IconProps> = (props) => (
   </IconBase>
 );
 
-// --- Sidebar ---
+// --- NOVO ÍCONE DE INFORMAÇÃO ---
+const InfoIcon: React.FC<IconProps> = (props) => (
+  <IconBase {...props}>
+    <circle cx="12" cy="12" r="10" />
+    <line x1="12" y1="16" x2="12" y2="12" />
+    <line x1="12" y1="8" x2="12.01" y2="8" />
+  </IconBase>
+);
+
+// --- Sidebar (MODIFICADA) ---
 const Sidebar: React.FC = () => {
   const location = useLocation();
 
+  // --- ITENS DE MENU MODIFICADOS ---
   const menuItems: MenuItem[] = [
     { label: "Início", path: "/", icon: HomeIcon },
-    { label: "Tabelas", path: "/balcar-table", icon: TableIcon },
-    { label: "Gráficos", path: "/balcar-graph", icon: ChartIcon },
-    { label: "Mapas", path: "/balcar-map", icon: MapIcon },
+    { label: "Informações do Projeto", path: "/info", icon: InfoIcon },
   ];
 
   const isActive = (path: string) => location.pathname === path;
 
   return (
     <aside
-      className="fixed top-[30px] left-0 h-[calc(100vh-30px)] w-64 p-6 flex flex-col shadow-xl z-20"
-      style={{ backgroundColor: sidebarBg }}
+      className="left-0 h-screen w-64 p-6 flex flex-col shadow-xl z-20"
+      style={{
+        background: "linear-gradient(to bottom, #2f2f2f, #3a3a3a, #4b4b4b)",
+      }}
     >
       <div className="flex flex-col flex-grow">
+        {/* --- Seção do Logo (Mantido Balcar) --- */}
         <div className="flex items-center mb-8 pb-4 border-b border-gray-700">
           <img
             src="/balcar.png"
@@ -96,6 +107,7 @@ const Sidebar: React.FC = () => {
           </div>
         </div>
 
+        {/* --- Navegação Principal (Modificada) --- */}
         <nav className="flex flex-col gap-2 mb-8" aria-label="Menu principal">
           <h2 className="text-xs font-semibold uppercase text-gray-500 mb-2">
             Navegação
@@ -104,21 +116,75 @@ const Sidebar: React.FC = () => {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center p-3 rounded-lg font-medium transition-all duration-200 ${
+              className={`flex items-center gap-3 p-3 rounded-lg font-medium transition-all duration-200 ${
                 isActive(item.path)
-                  ? "bg-green-700/50 text-white shadow-md scale-[1.02]"
-                  : "text-gray-300 hover:bg-green-900/70 hover:text-white"
+                  ? "shadow-md scale-[1.02] text-white"
+                  : "text-gray-300 hover:text-white hover:bg-gray-700/70"
               }`}
+              style={{
+                // Usando a primaryColor (#006666) deste arquivo
+                backgroundColor: isActive(item.path)
+                  ? primaryColor + "90"
+                  : "transparent",
+              }}
             >
-              <item.icon active={isActive(item.path)} />
-              <span className="ml-2">{item.label}</span>
+              <item.icon className="w-5 h-5 flex-shrink-0" active={isActive(item.path)} />
+              <span>{item.label}</span>
             </Link>
           ))}
         </nav>
 
+        {/* --- NOVA SEÇÃO DE PROJETOS --- */}
+        <div className="mb-8">
+          <h2 className="text-xs font-semibold uppercase text-gray-500 mb-3">
+            Projetos
+          </h2>
+          <div className="grid grid-cols-2 gap-4">
+            {/* --- Botão Projeto Furnas (AGORA É LINK) --- */}
+            <Link
+              to="/furnas"
+              className="group relative aspect-square rounded-lg overflow-hidden shadow-lg cursor-pointer transition-all duration-300 hover:scale-[1.03] hover:shadow-xl"
+              title="Projeto Furnas"
+            >
+              <img
+                src="/furnas.jpg"
+                alt="Projeto Furnas"
+                className="w-full h-full object-cover transition-opacity duration-300 group-hover:opacity-80"
+              />
+              <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-all duration-300"></div>
+              <span className="absolute bottom-2 left-2 text-sm font-bold text-white drop-shadow-md">
+                Furnas
+              </span>
+            </Link>
+
+            {/* --- Botão Projeto Sima (AGORA É LINK E COM AJUSTE DE IMAGEM) --- */}
+            <Link
+              to="/sima"
+              className="group relative aspect-square rounded-lg overflow-hidden shadow-lg cursor-pointer transition-all duration-300 hover:scale-[1.03] hover:shadow-xl bg-gray-700" // Fundo para o botão
+              title="Projeto Sima"
+            >
+              <img
+                src="/sima.png"
+                alt="Projeto Sima"
+                className="h-1/2 w-auto object-contain absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-300 group-hover:opacity-80" // Imagem centralizada e com metade da altura
+              />
+              <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-all duration-300"></div>
+              <span className="absolute bottom-2 left-2 text-sm font-bold text-white drop-shadow-md">
+                Sima
+              </span>
+            </Link>
+          </div>
+        </div>
+
+
+        {/* --- Seção "Sobre" (Movida para o final) --- */}
         <div className="mt-auto pt-4 border-t border-gray-700">
+          <h2 className="text-xs font-semibold uppercase text-gray-500 mb-2">
+            Sobre o Projeto
+          </h2>
           <p className="text-sm text-gray-400 leading-snug">
-            Balanço de carbono nos reservatórios de FURNAS.
+            {/* Texto genérico atualizado */}
+            Sistema integrado de monitoramento ambiental.
           </p>
         </div>
       </div>
@@ -252,12 +318,14 @@ const NotFoundPage: React.FC = () => (
 const AppLayout: React.FC = () => (
   <div className="flex min-h-screen bg-gray-50">
     <Sidebar />
-    <main className="flex-1 ml-64 overflow-y-auto pt-[30px]">
+    <main className="flex-1 overflow-y-auto ">
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/balcar-table" element={<TabelasPage />} />
         <Route path="/balcar-graph" element={<GraficosPage />} />
         <Route path="/balcar-map" element={<MapasPage />} />
+        {/* As rotas /info, /furnas, e /sima não estão definidas,
+            então levarão ao NotFoundPage */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </main>

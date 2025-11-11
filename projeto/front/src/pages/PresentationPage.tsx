@@ -5,6 +5,12 @@ import PresentationText from '../components/Presentation/PresentationText';
 import About from './About';
 import ActionButtons from '../components/Presentation/ActionButtons';
 
+
+
+
+
+
+
 // Componente para ondas animadas
 const Wave: React.FC<{ fill?: string; speed?: string; opacity?: number }> = ({
   fill = 'rgba(173, 216, 230, 0.5)',

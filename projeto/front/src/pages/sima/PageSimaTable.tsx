@@ -1,139 +1,151 @@
-// SimaTablePage.tsx 
-import { useState, useMemo } from 'react'; // 1. Importar useMemo
+// src/pages/sima/PageSimaTable.tsx
+import { useState, useMemo } from 'react'; 
 import { Menu } from '../../components/commons/TableMenu';
 import DataTable from '../../components/commons/DataTable';
 import { Placeholder } from '../../components/commons/TablePlaceholder';
 import { FilterBar } from '../../components/Filters/FilterBar';
-import { ModalExport } from '../../components/Export/ModalExport'; // 2. Importar ModalExport
+import { ModalExport } from '../../components/Export/ModalExport'; 
 import { useTableData } from '../../hooks/useTableData';
-// 3. Importar todos os tipos necessários
 import type { 
-  FilterParams, 
-  ColumnInfo, 
-  ColumnType, 
-  DataRow 
+  FilterParams, 
+  ColumnInfo, 
+  ColumnType, 
 } from '../../types/types'; // Ajuste o caminho
 
-// --- LISTA DE TABELAS DISPONÍVEIS PARA SIMA ---
+// --- LISTA DE TABELAS (Sem alteração) ---
 const tabelasDisponiveis = [
-  { label: 'Campo Tabela', value: 'campo-tabela' },
-  { label: 'Estação', value: 'estacao' },
-  { label: 'Sensor', value: 'sensor' },
-  { label: 'Sima', value: 'sima' },
-  { label: 'Sima Offline', value: 'sima-offline' },
+  { label: 'Campo Tabela', value: 'campo-tabela' },
+  { label: 'Estação', value: 'estacao' },
+  { label: 'Sensor', value: 'sensor' },
+  { label: 'Sima', value: 'sima' },
+  { label: 'Sima Offline', value: 'sima-offline' },
 ];
 
 export function SimaTablePage() {
-  const [tabelaAtiva, setTabelaAtiva] = useState<string | null>(null);
-  const [filters, setFilters] = useState<FilterParams>({});
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  // 4. Adicionar estado para o modal
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [tabelaAtiva, setTabelaAtiva] = useState<string | null>(null);
+  const [filters, setFilters] = useState<FilterParams>({});
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { dados, colunas, paginacao, loading, error } = useTableData(
-    'sima', // Database correto
-    tabelaAtiva,
-    currentPage,
-    filters
-  );
+  const { dados, colunas, paginacao, loading, error } = useTableData(
+    'sima', // Database correto
+    tabelaAtiva,
+    currentPage,
+    filters
+  );
 
-  // 5. Lógica 'useMemo' para inferir os tipos de coluna (A "Ponte")
-  const colunasDisponiveis = useMemo((): ColumnInfo[] => {
-    if (!colunas || colunas.length === 0) {
-      return [];
-    }
+  //
+  // *** INÍCIO DA REFATORAÇÃO (useMemo) ***
+  //
+  const colunasDisponiveis = useMemo((): ColumnInfo[] => {
 
-    const primeiraLinha: DataRow | undefined = dados?.[0];
+    /**
+     * Helper que infere o tipo de uma coluna.
+     * Ele varre os dados para encontrar o primeiro valor não-nulo
+     * e usa o tipo desse valor.
+     */
+    const getColumnType = (coluna: string): ColumnType => {
+      // 1. Regras especiais por nome (case-insensitive)
+      const lowerCol = coluna.toLowerCase();
+      if (lowerCol.startsWith('data')) return 'date';
+      if (lowerCol.startsWith('hora')) return 'time';
 
-    return colunas.map((colNome) => {
-      let tipo: ColumnType = 'unknown';
-
-      if (colNome.startsWith('data')) {
-        tipo = 'date';
-      } else if (colNome.startsWith('hora')) {
-        tipo = 'time';
-      } 
-      else if (primeiraLinha) {
-        const valor = primeiraLinha[colNome];
-        if (typeof valor === 'number') {
-          tipo = 'number';
-        } else if (typeof valor === 'string') {
-          tipo = 'string';
+      // 2. Inferência robusta baseada em dados
+      // Itera pelos dados até encontrar um valor não-nulo
+      for (const row of dados) {
+        const value = row[coluna];
+        
+        if (value !== null && value !== undefined) {
+          const type = typeof value;
+          if (type === 'number') return 'number';
+          if (type === 'string') return 'string';
+          // (Pode adicionar 'boolean' aqui se necessário)
         }
       }
-      
-      if (tipo === 'unknown') {
-        tipo = 'string';
-      }
-      
-      return { name: colNome, type: tipo };
-    });
-  }, [colunas, dados]); // Recalcula se as colunas ou dados mudarem
 
-  const handleSelectTabela = (novaTabela: string) => {
-    setTabelaAtiva(novaTabela);
-    setFilters({});
-    setCurrentPage(1);
-  };
+      // 3. Se a coluna inteira for nula ou os dados estiverem vazios, 
+      // assume 'string' como padrão seguro.
+      return 'string';
+    };
 
-  const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage);
-  };
+    // Mapeia as colunas usando o helper robusto
+    return colunas.map(coluna => {
+      return {
+        name: coluna,
+        type: getColumnType(coluna),
+      };
+    });
+  }, [colunas, dados]); // Depende de 'colunas' e 'dados'
+  //
+  // *** FIM DA REFATORAÇÃO (useMemo) ***
+  //
 
-  return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Menu Lateral */}
-      <Menu 
-        database='sima'
-        title="Dados Sima"
-        tabelas={tabelasDisponiveis}
-        tabelaAtiva={tabelaAtiva}
-        onSelectTabela={handleSelectTabela}
-      />
+  const handleSelectTabela = (novaTabela: string) => {
+    setTabelaAtiva(novaTabela);
+    setFilters({});
+    setCurrentPage(1);
+  };
 
-      {/* Área de Conteúdo Principal */}
-      <main className="flex-1 overflow-y-auto">
-        {tabelaAtiva ? (
-          <>
-            {/* 6. Passar as novas props para o FilterBar */}
-            <FilterBar 
-              key={tabelaAtiva}
-              onApplyFilters={setFilters}
-              onClearFilters={() => setFilters({})}
-              onExportClick={() => setIsModalOpen(true)} // Abre o modal
-              colunasDisponiveis={colunasDisponiveis}  // Passa as colunas inferidas
-            />
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
 
-            <DataTable 
-              database="sima"
-              tableName={tabelaAtiva} 
-              dados={dados}
-              colunas={colunas}
-              loading={loading}
-              error={error}
-              paginacao={paginacao}
-              onPageChange={handlePageChange}
-            />
-          </>
-        ) : (
-          <Placeholder />
-        )}
-      </main>
+  return (
+    <div className="flex h-screen bg-gray-100">
+      {/* Menu Lateral */}
+      <Menu 
+        database='sima'
+        title="Dados Sima"
+        tabelas={tabelasDisponiveis}
+        tabelaAtiva={tabelaAtiva}
+        onSelectTabela={handleSelectTabela}
+      />
 
-      {/* 7. Renderizar o Modal (controlado pela página-pai) */}
-      {tabelaAtiva && ( // Só renderiza o modal se houver uma tabela ativa
-        <ModalExport
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          database="sima" // Database correto
-          tableName={tabelaAtiva}
-          currentFilters={filters}
-          totalRecords={paginacao.total}
-          pageRecords={dados.length}
-        />
-      )}
-    </div>
-  );
+  	  {/* Área de Conteúdo Principal */}
+  	  <main className="flex-1 overflow-y-auto">
+  	    {tabelaAtiva ? (
+  	      <>
+  	        <FilterBar 
+  	          tableName={tabelaAtiva}
+  	          key={tabelaAtiva}
+  	          onApplyFilters={setFilters}
+  	          onClearFilters={() => setFilters({})}
+  	          onExportClick={() => setIsModalOpen(true)}
+  	          colunasDisponiveis={colunasDisponiveis} 
+  	        />
+
+  	        <DataTable 
+  	          database="sima"
+  	          tableName={tabelaAtiva} 
+  	          dados={dados}
+  	          colunas={colunas}
+  	          loading={loading}
+  	          error={error}
+  	          paginacao={paginacao}
+  	          onPageChange={handlePageChange}
+  	        />
+  	      </>
+  	    ) : (
+  	      <Placeholder />
+  	    )}
+  	  </main>
+
+  	  {/* Modal de Exportação */}
+  	  {tabelaAtiva && (
+  	    <ModalExport
+  	      currentPage={paginacao.page}
+  	      currentLimit={paginacao.limit}
+  	      isOpen={isModalOpen}
+  	      onClose={() => setIsModalOpen(false)}
+  	      database="sima" // Database correto
+  	      tableName={tabelaAtiva}
+  	      currentFilters={filters}
+  	      totalRecords={paginacao.total}
+  	      pageRecords={dados.length}
+  	    />
+  	  )}
+  	</div>
+  );
 }
 
 export default SimaTablePage;

@@ -3,22 +3,32 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
-interface ColorPalette {
-  background: string;
-  surface: string;
-  primary: string;
-  secondary: string;
-}
+// Paleta de cores
+const colors = {
+  // Cores Primárias/Secundárias para Ênfase e Marca (Tema "Furnas")
+  primary: "#1D4ED8", // Azul Escuro (Blue 800) - Para botões, seleção, títulos
+  secondary: "#3B82F6", // Azul Vibrante (Blue 500) - Para detalhes e ênfase secundária
+  white: "#FFFFFF", // Cor do texto em botões primários
 
-const colorsFurnas: ColorPalette = {
-  background: '#F3F7FB',
-  surface: '#FFFFFF',
-  primary: '#CC5500',
-  secondary: '#FF8C00',
+  // Cores da Sidebar (Tema Escuro - Neutro)
+  sidebarBg: "#1E293B", // Fundo Principal da Sidebar (Slate 800)
+  sidebarBorder: "#334155", // Borda sutil e separadores (Slate 700)
+  sidebarItem: "#334155", // Fundo de itens não selecionados (Slate 700)
+  sidebarHover: "#475569", // Fundo de hover (Slate 600)
+  sidebarText: "#F8FAFC", // Cor principal do texto (White/Slate 50)
+  sidebarTextMuted: "#94A3B8", // Cor do texto secundário/muted (Slate 400)
+
+  // Cores do Mapa (UI Neutra)
+  mapPopupBg: "#334155", // Fundo do Popup do mapa (Slate 700)
+  mapPopupText: "#F8FAFC", // Texto do Popup do mapa (White/Slate 50)
+
+  // Cores dos Marcadores (Entidades)
+  mapMarkerFurnas: "#1D4ED8", // Azul (Cor primária)
+  mapMarkerBalcar: "#047857", // Verde Esmeralda Escuro (Usado para "Sítio")
+  mapMarkerSima: "#C2410C", // Laranja Queimado (Orange 700)
 };
 
-
-// --- Interfaces e Tipos Furnas (Mantidas) ---
+// --- Interfaces e Tipos Furnas ---
 
 interface ImageMap {
   [key: string]: string;
@@ -38,31 +48,32 @@ const reservatorioImages: ImageMap = {
   jirau: "/mapa/jirau.jpg",
   mamiraua: "/mapa/mamiraua.jpg",
   manso: "/mapa/manso.jpg",
-  marimbondo: "/mapa/marimbondo.jpg", // Corrigido path
+  marimbondo: "/mapa/marimbondo.jpg",
   "mascarenhas-de-moraes": "/mapa/mascarenhas-de-moraes.jpg",
-  "porto-colombia": "/mapa/porto-colombia.jpg", // Corrigido path
+  "porto-colombia": "/mapa/porto-colombia.jpg",
   segredo: "/mapa/segredo.jpg",
   "serra-da-mesa": "/mapa/serra-da-mesa.jpg",
   "tres-marias": "/mapa/tres-marias.jpg",
   tucurui: "/mapa/tucurui.jpg",
   "santo-antonio": "/mapa/santo-antonio.jpg",
-  xingo: "/mapa/xingo.jpg", // Corrigido path
+  xingo: "/mapa/xingo.jpg",
 };
 
 const formatNameForImageKey = (name: string): string => {
   const formattedName = name
     .toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/ /g, "-")
     .replace(/--/g, "-");
 
   const namesToMatch = [
-    'mascarenhas-de-moraes',
-    'serra-da-mesa',
-    'tres-marias',
-    'santo-antonio',
-    'belo-monte',
-    'porto-colombia'
+    "mascarenhas-de-moraes",
+    "serra-da-mesa",
+    "tres-marias",
+    "santo-antonio",
+    "belo-monte",
+    "porto-colombia",
   ];
 
   for (const matchName of namesToMatch) {
@@ -85,7 +96,7 @@ interface Reservatorio {
   lat: number | null;
   lng: number | null;
   // Adicionando um campo de status simulado (se necessário)
-  status: 'Aberto' | 'Fechado';
+  status: "Aberto" | "Fechado";
 }
 
 interface Sitio {
@@ -101,7 +112,7 @@ interface Sitio {
     lng: number;
   };
   // Adicionando um campo de status simulado (se necessário)
-  status: 'Aberto' | 'Fechado';
+  status: "Aberto" | "Fechado";
 }
 
 interface ApiResponse<T> {
@@ -113,69 +124,91 @@ interface ApiResponse<T> {
   data: T[];
 }
 
-// --- Tipos e Funções da Sidebar (Adaptadas do SimaMap) ---
+// --- Tipos e Funções da Sidebar ---
 
 type TipoFiltroFurnas = "Todos" | "Reservatório" | "Sitio";
 type StatusFiltro = "Todos" | "Aberto" | "Fechado";
+type DataItem = (Reservatorio & { type: "reservatorio" }) | (Sitio & { type: "sitio" });
 
-const getIcon = (isReservatorio: boolean) => isReservatorio ? "💧" : "⚙️"; // Sítio = Engrenagem/Instalação
-const getIconColorClass = (isReservatorio: boolean) => isReservatorio ? "text-blue-600 bg-blue-100" : "text-purple-600 bg-purple-100";
+// Usando mapMarkerFurnas para Reservatório (Azul) e mapMarkerBalcar para Sítio (Verde)
+const getIcon = (isReservatorio: boolean) => (isReservatorio ? "💧" : "⚙️"); // Sítio = Engrenagem/Instalação
 
+// Customizando os backgrounds dos ícones para refletir a marca
+const getIconBgStyle = (isReservatorio: boolean) => ({
+  backgroundColor: isReservatorio ? colors.mapMarkerFurnas : colors.mapMarkerBalcar,
+  color: "white", // Ícones brancos para contraste
+});
 
-// --- Componente: SidebarItem (Adaptado para Reservatorio/Sitio) ---
-
-type DataItem = (Reservatorio & { type: 'reservatorio' }) | (Sitio & { type: 'sitio' });
+// --- Componente: SidebarItem ---
 
 const SidebarItemFurnas: React.FC<{
-  item: DataItem,
-  onSelect: (id: string) => void,
-  isSelected: boolean
+  item: DataItem;
+  onSelect: (id: string) => void;
+  isSelected: boolean;
 }> = ({ item, onSelect, isSelected }) => {
-
-  const isReservatorio = item.type === 'reservatorio';
+  const isReservatorio = item.type === "reservatorio";
   const idString = `${item.type}-${isReservatorio ? item.idreservatorio : item.idsitio}`;
 
-  // Usando um status simulado, já que não temos o campo 'fim' do SimaMap
-  const statusText = item.status === 'Fechado' ? "Fechado" : "Aberto";
-  const statusColor = item.status === 'Fechado' ? "text-red-600" : "text-green-600";
+  // Usando um status simulado
+  const statusText = item.status === "Fechado" ? "Fechado" : "Aberto";
+  const statusColor = item.status === "Fechado" ? "text-red-400" : "text-green-400";
 
   // Capacidade ou Simulação de Ocupação/Status
   const capacidade = isReservatorio
     ? Math.round(((item.idreservatorio * 17) % 100) * 0.9) + 1 // Simulação para reservatório
     : Math.round(((item.idsitio * 13) % 100) * 0.9) + 1; // Simulação para sítio
 
-  const barColor = capacidade > 70 ? "bg-green-500" : capacidade > 40 ? "bg-yellow-500" : "bg-red-500";
+  const barColor =
+    capacidade > 70 ? "bg-green-500" : capacidade > 40 ? "bg-yellow-500" : "bg-red-500";
 
   const infoText = isReservatorio
-    ? `Geradora de energia: ${item.nome}` : `Localização ligada à: ${item.reservatorio.nome}`;
-  const horaText = isReservatorio ? `Monitoramento contínuo` : `Horário de visita/operação: 8h às 17h`;
+    ? `Geradora de energia: ${item.nome}`
+    : `Localização ligada à: ${item.reservatorio.nome}`;
+  const horaText = isReservatorio
+    ? `Monitoramento contínuo`
+    : `Horário de visita/operação: 8h às 17h`;
 
   return (
     <div
-      className={`p-3 border rounded-lg cursor-pointer transition-colors shadow-sm 
-        ${isSelected ? 'border-2 border-orange-500 bg-orange-50' : 'border-gray-200 hover:bg-gray-50'}`}
+      className={`p-3 border rounded-lg cursor-pointer transition-colors shadow-sm
+        ${isSelected ? "border-2" : "border-gray-700 hover:bg-gray-700"}`}
+      style={{
+        backgroundColor: isSelected ? colors.sidebarHover : colors.sidebarItem,
+        // Aplica a cor PRIMÁRIA (Azul) na borda do item selecionado
+        borderColor: isSelected ? colors.primary : colors.sidebarBorder,
+      }}
       onClick={() => onSelect(idString)}
     >
       <div className={`flex items-center space-x-3 mb-2`}>
-        <div className={`p-2 rounded-full ${getIconColorClass(isReservatorio)} text-lg`}>
+        <div
+          className={`p-2 rounded-full text-lg`}
+          style={getIconBgStyle(isReservatorio)} // Aplica a cor de fundo do ícone
+        >
           {getIcon(isReservatorio)}
         </div>
         <div className="flex-1">
-          <h4 className="font-semibold text-gray-800">{item.nome}</h4>
+          <h4 className="font-semibold" style={{ color: colors.sidebarText }}>
+            {item.nome}
+          </h4>
         </div>
         <span className={`text-xs font-medium ${statusColor}`}>{statusText}</span>
       </div>
 
-      <p className="text-xs text-gray-500 mt-1">{infoText}</p>
-      <p className="text-xs text-gray-500">{horaText}</p>
+      <p className="text-xs" style={{ color: colors.sidebarTextMuted }}>
+        {infoText}
+      </p>
+      <p className="text-xs" style={{ color: colors.sidebarTextMuted }}>
+        {horaText}
+      </p>
 
-      <div className="mt-2 text-xs text-gray-600">
+      <div className="mt-2 text-xs" style={{ color: colors.sidebarText }}>
         Nível / Ocupação (Simulado)
         <div className="flex items-center space-x-2">
-          <div className="flex-1 w-full h-1 bg-gray-200 rounded-full">
-            <div className={`h-1 rounded-full ${barColor}`}
-              style={{ width: `${capacidade}%` }}>
-            </div>
+          <div className="flex-1 w-full h-1 bg-gray-600 rounded-full">
+            <div
+              className={`h-1 rounded-full ${barColor}`}
+              style={{ width: `${capacidade}%` }}
+            ></div>
           </div>
           <span className="font-medium">{capacidade}%</span>
         </div>
@@ -184,8 +217,7 @@ const SidebarItemFurnas: React.FC<{
   );
 };
 
-
-// --- Componente: Sidebar (Aba Lateral Adaptada) ---
+// --- Componente: Sidebar ---
 
 interface SidebarPropsFurnas {
   tipoFiltro: TipoFiltroFurnas;
@@ -202,63 +234,141 @@ interface SidebarPropsFurnas {
 }
 
 const SidebarFurnas: React.FC<SidebarPropsFurnas> = ({
-  tipoFiltro, setTipoFiltro,
-  statusFiltro, setStatusFiltro,
-  searchText, setSearchText,
+  tipoFiltro,
+  setTipoFiltro,
+  statusFiltro,
+  setStatusFiltro,
+  searchText,
+  setSearchText,
   filteredItems,
-  totalSitios, totalReservatorios,
+  totalSitios,
+  totalReservatorios,
   selectedItemId,
-  onSelectItem
+  onSelectItem,
 }) => {
   return (
-    <div className="w-96 bg-white p-4 overflow-y-auto border-r border-gray-200 shadow-xl flex-shrink-0"
-      style={{ height: "100%", zIndex: 10 }}>
-
-      <h2 className="text-xl font-bold mb-1 text-gray-700">Localizações FURNAS</h2>
-      <p className="text-sm text-gray-500 mb-4">{filteredItems.length} pontos encontrados</p>
+    <div
+      className="w-96 p-4 overflow-y-auto border-r border-gray-700 shadow-xl flex-shrink-0"
+      style={{
+        height: "100%",
+        zIndex: 10,
+        backgroundColor: colors.sidebarBg,
+        color: colors.sidebarText,
+      }}
+    >
+      <h2 className="text-xl font-bold mb-1" style={{ color: colors.sidebarText }}>
+        Localizações FURNAS
+      </h2>
+      <p className="text-sm" style={{ color: colors.sidebarTextMuted }}>
+        {filteredItems.length} pontos encontrados
+      </p>
 
       <div className="flex justify-between space-x-3 mb-4">
-        <div className="flex-1 p-3 rounded-lg border border-gray-300 flex items-center shadow-sm">
-          <div className={`p-2 rounded-full ${getIconColorClass(true)} text-xl mr-2`}>💧</div>
+        <div
+          className="flex-1 p-3 rounded-lg border border-gray-700 flex items-center shadow-sm"
+          style={{ backgroundColor: colors.sidebarItem }}
+        >
+          {/* Aplica a cor FURNAS (Azul) nos ícones de resumo */}
+          <div
+            className={`p-2 rounded-full text-xl mr-2`}
+            style={{ backgroundColor: colors.mapMarkerFurnas, color: "white" }}
+          >
+            💧
+          </div>
           <div>
-            <p className="text-sm text-gray-500">Reservatórios</p>
-            <p className="text-xl font-bold text-gray-800">{totalReservatorios}</p>
+            <p className="text-sm" style={{ color: colors.sidebarTextMuted }}>
+              Reservatórios
+            </p>
+            <p className="text-xl font-bold" style={{ color: colors.sidebarText }}>
+              {totalReservatorios}
+            </p>
           </div>
         </div>
-        <div className="flex-1 p-3 rounded-lg border border-gray-300 flex items-center shadow-sm">
-          <div className={`p-2 rounded-full ${getIconColorClass(false)} text-xl mr-2`}>⚙️</div>
+        <div
+          className="flex-1 p-3 rounded-lg border border-gray-700 flex items-center shadow-sm"
+          style={{ backgroundColor: colors.sidebarItem }}
+        >
+          {/* Aplica a cor SÍTIO (Verde/Balcar) nos ícones de resumo */}
+          <div
+            className={`p-2 rounded-full text-xl mr-2`}
+            style={{ backgroundColor: colors.mapMarkerBalcar, color: "white" }}
+          >
+            ⚙️
+          </div>
           <div>
-            <p className="text-sm text-gray-500">Sítios</p>
-            <p className="text-xl font-bold text-gray-800">{totalSitios}</p>
+            <p className="text-sm" style={{ color: colors.sidebarTextMuted }}>
+              Sítios
+            </p>
+            <p className="text-xl font-bold" style={{ color: colors.sidebarText }}>
+              {totalSitios}
+            </p>
           </div>
         </div>
       </div>
 
       <div className="mb-4">
         <div className="relative">
-          <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <svg
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
           <input
             type="text"
             placeholder="Buscar por nome ou descrição..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 text-sm"
+            className="w-full pl-10 pr-4 py-2 border border-gray-700 rounded-lg focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent text-sm"
+            style={
+              {
+                border: `1px solid ${colors.sidebarBorder}`,
+                backgroundColor: colors.sidebarItem, // Fundo do input
+                color: colors.sidebarText, // Texto digitado
+                "--tw-ring-color": colors.primary, // Foco Laranja
+              } as React.CSSProperties
+            } // <-- CORREÇÃO 1: Corrige o erro de tipo da prop customizada
           />
         </div>
       </div>
 
+      <button
+        className={`w-full p-2 mb-6 rounded-lg font-semibold text-white shadow-md transition-colors hover:opacity-90`}
+        style={{ backgroundColor: colors.primary }} // (Azul primário)
+        onClick={() => {
+          onSelectItem("all");
+          alert("Funcionalidade 'Me localizar' a ser implementada com a API de Geolocation.");
+        }}
+      >
+        <div className="flex items-center justify-center space-x-2">
+          <span>📍 Me localizar</span>
+        </div>
+      </button>
+
       <div className="mb-4">
-        <h3 className="font-semibold text-sm mb-2 text-gray-700">Tipo</h3>
-        <div className="flex space-x-2 p-1 rounded-lg border border-gray-200 bg-gray-50">
+        <h3 className="font-semibold text-sm mb-2" style={{ color: colors.sidebarText }}>
+          Tipo
+        </h3>
+        <div
+          className="flex space-x-2 p-1 rounded-lg border border-gray-700"
+          style={{ backgroundColor: colors.sidebarItem }}
+        >
           {(["Todos", "Reservatório", "Sitio"] as TipoFiltroFurnas[]).map((tipo) => (
             <button
               key={tipo}
               onClick={() => setTipoFiltro(tipo)}
-              className={`flex-1 p-2 rounded-lg text-sm font-medium transition-all ${tipoFiltro === tipo
-                ? `text-white shadow-sm`
-                : "text-gray-700 hover:bg-gray-100"
-                }`}
-              style={tipoFiltro === tipo ? { backgroundColor: colorsFurnas.primary } : {}}
+              className={`flex-1 p-2 rounded-lg text-sm font-medium transition-all ${
+                tipoFiltro === tipo ? `text-white shadow-sm` : ""
+              }`}
+              style={{
+                backgroundColor: tipoFiltro === tipo ? colors.primary : colors.sidebarItem,
+                color: tipoFiltro === tipo ? "white" : colors.sidebarText,
+              }}
             >
               {tipo}
             </button>
@@ -267,17 +377,24 @@ const SidebarFurnas: React.FC<SidebarPropsFurnas> = ({
       </div>
 
       <div className="mb-6">
-        <h3 className="font-semibold text-sm mb-2 text-gray-700">Status (Simulado)</h3>
-        <div className="flex space-x-2 p-1 rounded-lg border border-gray-200 bg-gray-50">
+        <h3 className="font-semibold text-sm mb-2" style={{ color: colors.sidebarText }}>
+          Status (Simulado)
+        </h3>
+        <div
+          className="flex space-x-2 p-1 rounded-lg border border-gray-700"
+          style={{ backgroundColor: colors.sidebarItem }}
+        >
           {(["Todos", "Aberto", "Fechado"] as StatusFiltro[]).map((status) => (
             <button
               key={status}
               onClick={() => setStatusFiltro(status)}
-              className={`flex-1 p-2 rounded-lg text-sm font-medium transition-all ${statusFiltro === status
-                ? `text-white shadow-sm`
-                : "text-gray-700 hover:bg-gray-100"
-                }`}
-              style={statusFiltro === status ? { backgroundColor: colorsFurnas.primary } : {}}
+              className={`flex-1 p-2 rounded-lg text-sm font-medium transition-all ${
+                statusFiltro === status ? `text-white shadow-sm` : ""
+              }`}
+              style={{
+                backgroundColor: statusFiltro === status ? colors.primary : colors.sidebarItem,
+                color: statusFiltro === status ? "white" : colors.sidebarText,
+              }}
             >
               {status}
             </button>
@@ -289,36 +406,39 @@ const SidebarFurnas: React.FC<SidebarPropsFurnas> = ({
         {filteredItems.length > 0 ? (
           filteredItems.map((item) => (
             <SidebarItemFurnas
-              key={`${item.type}-${item.type === 'reservatorio' ? item.idreservatorio : item.idsitio}`}
+              key={`${item.type}-${item.type === "reservatorio" ? item.idreservatorio : item.idsitio}`}
               item={item}
               onSelect={onSelectItem}
-              isSelected={selectedItemId === `${item.type}-${item.type === 'reservatorio' ? item.idreservatorio : item.idsitio}`}
+              isSelected={
+                selectedItemId ===
+                `${item.type}-${item.type === "reservatorio" ? item.idreservatorio : item.idsitio}`
+              }
             />
           ))
         ) : (
-          <p className="text-center text-gray-500 p-8 text-sm">Nenhuma localização encontrada com os filtros e busca atuais.</p>
+          <p className="text-center p-8 text-sm" style={{ color: colors.sidebarTextMuted }}>
+            Nenhuma localização encontrada com os filtros e busca atuais.
+          </p>
         )}
       </div>
-
     </div>
   );
 };
 
-
-// --- Configurações do Leaflet (Mantidas) ---
+// --- Configurações do Leaflet ---
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
   iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
 });
 
+// Ícone do Sítio: Fundo Verde (Balcar) com borda Azul (Furnas)
 const siteIconFurnas = new L.DivIcon({
   className: "custom-site-icon-furnas",
-  html: `<div style="background-color: ${colorsFurnas.secondary}; width: 15px; height: 15px; border-radius: 50%; border: 3px solid ${colorsFurnas.primary}; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
+  html: `<div style="background-color: ${colors.mapMarkerBalcar}; width: 15px; height: 15px; border-radius: 50%; border: 3px solid ${colors.mapMarkerFurnas}; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
   iconSize: [21, 21],
   iconAnchor: [10, 10],
 });
@@ -326,22 +446,20 @@ const siteIconFurnas = new L.DivIcon({
 const INITIAL_CENTER: [number, number] = [-20.0, -47.0];
 const INITIAL_ZOOM = 6;
 
-
-// --- Componente Principal: FurnasMap (Atualizado) ---
+// --- Componente Principal: FurnasMap ---
 
 const FurnasMap: React.FC = () => {
   const [reservatorios, setReservatorios] = useState<Reservatorio[]>([]);
   const [sitios, setSitios] = useState<Sitio[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ESTADOS DA SIDEBAR
+  // Estados da sidebar
   const [tipoFiltro, setTipoFiltro] = useState<TipoFiltroFurnas>("Todos");
-  const [statusFiltro, setStatusFiltro] = useState<StatusFiltro>("Todos"); // Usaremos um status simulado
+  const [statusFiltro, setStatusFiltro] = useState<StatusFiltro>("Todos"); // Status simulado
   const [searchText, setSearchText] = useState("");
   const [selectedItemId, setSelectedItemId] = useState<string | "all">("all");
 
-
-  // Efeito de busca de dados (Mantido)
+  // Efeito de busca de dados
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -350,19 +468,18 @@ const FurnasMap: React.FC = () => {
           fetch("http://localhost:3001/api/furnas/sitio/all?limit=10000"),
         ]);
 
-        const reservatoriosData: ApiResponse<Reservatorio> =
-          await reservatoriosResponse.json();
+        const reservatoriosData: ApiResponse<Reservatorio> = await reservatoriosResponse.json();
         const sitiosData: ApiResponse<Sitio> = await sitiosResponse.json();
 
         if (reservatoriosData.success && sitiosData.success) {
           // Adicionando status simulado
           const reservatoriosComStatus = (reservatoriosData.data || []).map((r, i) => ({
             ...r,
-            status: i % 3 === 0 ? 'Fechado' : 'Aberto' as 'Aberto' | 'Fechado'
+            status: i % 3 === 0 ? "Fechado" : ("Aberto" as "Aberto" | "Fechado"),
           }));
           const sitiosComStatus = (sitiosData.data || []).map((s, i) => ({
             ...s,
-            status: i % 5 === 0 ? 'Fechado' : 'Aberto' as 'Aberto' | 'Fechado'
+            status: i % 5 === 0 ? "Fechado" : ("Aberto" as "Aberto" | "Fechado"),
           }));
 
           setReservatorios(reservatoriosComStatus);
@@ -382,79 +499,80 @@ const FurnasMap: React.FC = () => {
   // Combina Reservatórios e Sítios para a lógica de filtro
   const allData: DataItem[] = useMemo(() => {
     const reservatorioItems: DataItem[] = reservatorios
-      .filter(r => r.lat && r.lng)
-      .map(r => ({ ...r, type: 'reservatorio' }));
+      .filter((r) => r.lat && r.lng)
+      .map((r) => ({ ...r, type: "reservatorio" }));
 
     const sitioItems: DataItem[] = sitios
-      .filter(s => s.lat && s.lng)
-      .map(s => ({ ...s, type: 'sitio' }));
+      .filter((s) => s.lat && s.lng)
+      .map((s) => ({ ...s, type: "sitio" }));
 
     return [...reservatorioItems, ...sitioItems];
   }, [reservatorios, sitios]);
 
-
-  // LÓGICA DE FILTRAGEM (Adaptação do SimaMap)
+  // Lógica de filtragem
   const filteredDataItems = useMemo(() => {
     let list = allData;
 
-    // 1. Filtrar por Tipo (Reservatório/Sitio)
-    list = list.filter(item => {
-      if (tipoFiltro === "Reservatório") return item.type === 'reservatorio';
-      if (tipoFiltro === "Sitio") return item.type === 'sitio';
+    // Filtrar por Tipo (Reservatório/Sitio)
+    list = list.filter((item) => {
+      if (tipoFiltro === "Reservatório") return item.type === "reservatorio";
+      if (tipoFiltro === "Sitio") return item.type === "sitio";
       return true; // "Todos"
     });
 
-    // 2. Filtrar por Status (Aberto/Fechado) - Usando o status simulado
-    list = list.filter(item => {
-      if (statusFiltro === "Aberto") return item.status === 'Aberto';
-      if (statusFiltro === "Fechado") return item.status === 'Fechado';
+    // Filtrar por Status (Aberto/Fechado) - Usando o status simulado
+    list = list.filter((item) => {
+      if (statusFiltro === "Aberto") return item.status === "Aberto";
+      if (statusFiltro === "Fechado") return item.status === "Fechado";
       return true; // "Todos"
     });
 
-    // 3. Filtrar por Busca
+    // Filtrar por Busca
     if (searchText) {
       const lowerCaseSearch = searchText.toLowerCase();
-      list = list.filter(item =>
-        item.nome.toLowerCase().includes(lowerCaseSearch) ||
-        (item.type === 'sitio' && item.descricao.toLowerCase().includes(lowerCaseSearch))
+      list = list.filter(
+        (item) =>
+          item.nome.toLowerCase().includes(lowerCaseSearch) ||
+          (item.type === "sitio" && item.descricao.toLowerCase().includes(lowerCaseSearch)),
       );
     }
     return list;
   }, [allData, tipoFiltro, statusFiltro, searchText]);
 
-  // FILTRO FINAL (Aplica a seleção do item único)
+  // Filtro final (Aplica a seleção do item único)
   const filteredMapItems = useMemo(() => {
     if (selectedItemId === "all") {
       return filteredDataItems;
     }
     // Retorna APENAS o item selecionado, se ele estiver na lista base
     const selected = filteredDataItems.filter((item) => {
-      const idString = `${item.type}-${item.type === 'reservatorio' ? item.idreservatorio : item.idsitio}`;
+      const idString = `${item.type}-${item.type === "reservatorio" ? item.idreservatorio : item.idsitio}`;
       return idString === selectedItemId;
     });
     return selected.length > 0 ? selected : filteredDataItems;
   }, [selectedItemId, filteredDataItems]);
 
   // Separa os itens filtrados para o mapa
-  const filteredMapReservatorios = filteredMapItems.filter(item => item.type === 'reservatorio') as Reservatorio[];
-  const filteredMapSitios = filteredMapItems.filter(item => item.type === 'sitio') as Sitio[];
+  const filteredMapReservatorios = filteredMapItems.filter(
+    (item) => item.type === "reservatorio",
+  ) as Reservatorio[];
+  const filteredMapSitios = filteredMapItems.filter((item) => item.type === "sitio") as Sitio[];
 
   // Contadores para o cabeçalho da Sidebar
-  const totalReservatorios = allData.filter(item => item.type === 'reservatorio').length;
-  const totalSitios = allData.filter(item => item.type === 'sitio').length;
+  const totalReservatorios = allData.filter((item) => item.type === "reservatorio").length;
+  const totalSitios = allData.filter((item) => item.type === "sitio").length;
 
-
-  // LÓGICA DE CENTRALIZAÇÃO DO MAPA (Código do colega, adaptado para ID string)
+  // Lógica de centralização do mapa
   const mapSettings = useMemo(() => {
     if (selectedItemId !== "all") {
-      const [type, idStr] = selectedItemId.split('-');
+      const [type, idStr] = selectedItemId.split("-");
       const id = Number(idStr);
 
       let item: Reservatorio | Sitio | undefined;
-      if (type === 'reservatorio') {
-        item = reservatorios.find(r => r.idreservatorio === id);
-      } else if (type === 'sitio') {
-        item = sitios.find(s => s.idsitio === id);
+      if (type === "reservatorio") {
+        item = reservatorios.find((r) => r.idreservatorio === id);
+      } else if (type === "sitio") {
+        item = sitios.find((s) => s.idsitio === id);
       }
 
       if (item && item.lat && item.lng) {
@@ -470,16 +588,13 @@ const FurnasMap: React.FC = () => {
     };
   }, [selectedItemId, reservatorios, sitios]);
 
-
   if (loading) {
     return <div className="p-4 text-lg font-medium">Carregando mapa FURNAS... 🗺️</div>;
   }
 
-
   return (
-    // LAYOUT FLEXÍVEL (Adicionado ao FurnasMap)
+    // Layout flexível
     <div className="flex" style={{ height: "calc(100vh - 80px)" }}>
-
       {/* Sidebar */}
       <SidebarFurnas
         tipoFiltro={tipoFiltro}
@@ -497,7 +612,7 @@ const FurnasMap: React.FC = () => {
 
       {/* Container do Mapa (flex-1) */}
       <div className="flex-1 p-4 overflow-hidden">
-        <h1 className="text-3xl font-bold mb-4" style={{ color: colorsFurnas.primary }}>
+        <h1 className="text-3xl font-bold mb-4" style={{ color: colors.primary }}>
           Mapa de Localizações - Projeto FURNAS
         </h1>
 
@@ -537,15 +652,11 @@ const FurnasMap: React.FC = () => {
                       }}
                     />
                   )}
-                  <h3
-                    style={{ color: colorsFurnas.primary }}
-                    className="font-bold text-lg"
-                  >
+                  <h3 style={{ color: colors.mapMarkerFurnas }} className="font-bold text-lg">
                     Reservatório: {reservatorio.nome}
                   </h3>
                   <p>
-                    <span className="font-semibold">ID:</span>{" "}
-                    {reservatorio.idreservatorio}
+                    <span className="font-semibold">ID:</span> {reservatorio.idreservatorio}
                   </p>
                   <p>Lat: {reservatorio.lat.toFixed(4)}</p>
                   <p>Lng: {reservatorio.lng.toFixed(4)}</p>
@@ -558,32 +669,24 @@ const FurnasMap: React.FC = () => {
           {/* Marcadores de Sítios */}
           {filteredMapSitios.map((sitio) =>
             sitio.lat && sitio.lng ? (
-              <Marker
-                key={sitio.idsitio}
-                position={[sitio.lat, sitio.lng]}
-                icon={siteIconFurnas}
-              >
+              <Marker key={sitio.idsitio} position={[sitio.lat, sitio.lng]} icon={siteIconFurnas}>
                 <Popup>
-                  <h3
-                    style={{ color: colorsFurnas.secondary }}
-                    className="font-bold text-lg"
-                  >
+                  <h3 style={{ color: colors.mapMarkerBalcar }} className="font-bold text-lg">
                     Sítio: {sitio.nome}
                   </h3>
                   <p>
                     <span className="font-semibold">ID:</span> {sitio.idsitio}
                   </p>
                   <p>
-                    <span className="font-semibold">Reservatório:</span>{" "}
-                    {sitio.reservatorio.nome} (ID:{" "}
-                    {sitio.reservatorio.idreservatorio})
+                    <span className="font-semibold">Reservatório:</span> {sitio.reservatorio.nome}{" "}
+                    (ID: {sitio.reservatorio.idreservatorio})
                   </p>
                   <p>Lat: {sitio.lat.toFixed(4)}</p>
                   <p>Lng: {sitio.lng.toFixed(4)}</p>
                   <p>Status: {sitio.status}</p>
                 </Popup>
               </Marker>
-            ) : null
+            ) : null,
           )}
         </MapContainer>
       </div>
