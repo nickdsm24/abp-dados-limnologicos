@@ -18,7 +18,10 @@ import FurnasMenu from "./pages/furnas/FurnasMenu";
 import FurnasTable from "./pages/furnas/PageFurnasTable";
 import FurnasGraph from "./pages/furnas/FurnasGraph";
 import FurnasMap from "./pages/furnas/FurnasMap";
-import FurnasInfo from "./pages/furnas/FurnasInfo.tsx"
+import FurnasInfo from "./pages/furnas/FurnasInfo.tsx";
+import FurnasMetodologia from "./pages/furnas/InfoFurnas/FurnasMetodologia";
+import FurnasResultados from "./pages/furnas/InfoFurnas/FurnasResultados";
+import FurnasParticipantes from "./pages/furnas/InfoFurnas/FurnasParticipantes";
 
 function App() {
   return (
@@ -66,6 +69,9 @@ function AppWithRouter() {
           <Route path="/furnas-graph" element={<FurnasGraph />} />
           <Route path="/furnas-map" element={<FurnasMap />} />
           <Route path="/furnas-info" element={<FurnasInfo />} />
+          <Route path="/furnas-metodologia" element={<FurnasMetodologia />} />
+          <Route path="/furnas-resultados" element={<FurnasResultados />} />
+          <Route path="/furnas-participantes" element={<FurnasParticipantes />} />
         </Routes>
       </div>
     </div>

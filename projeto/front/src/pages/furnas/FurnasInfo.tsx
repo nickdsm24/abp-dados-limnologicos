@@ -1,21 +1,32 @@
 import React from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom"; // ✅ Import atualizado
 
-const BalancoDeCarbono: React.FC = () => {
+const FurnasInfo: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const menuItems = [
-    { id: "metodologia", label: "Metodologia" },
-    { id: "resultados", label: "Resultados" },
-    { id: "participantes", label: "Participantes" },
-    { id: "usinas", label: "Usinas" },
-    { id: "pesquisas", label: "Pesquisas" },
-    { id: "publicacoes", label: "Publicações" },
-    { id: "imagens", label: "Imagens" },
-    { id: "links", label: "Links" },
+    { id: "metodologia", label: "Metodologia", path: "/furnas-metodologia" },
+    { id: "resultados", label: "Resultados", path: "/furnas-resultados" },
+    { id: "participantes", label: "Participantes", path: "/furnas-participantes" },
+    { id: "usinas", label: "Usinas", path: "/furnas-usinas" },
+    { id: "pesquisas", label: "Pesquisas", path: "/furnas-pesquisas" },
+    { id: "publicacoes", label: "Publicações", path: "/furnas-publicacoes" },
+    { id: "imagens", label: "Imagens", path: "/furnas-imagens" },
+    { id: "links", label: "Links", path: "/furnas-links" },
   ];
 
-  const scrollToSection = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth" });
+  // ✅ Função para navegação instantânea
+  const handleMenuClick = (path: string, id: string) => {
+    if (location.pathname === path) {
+      // Se já está na página, faz scroll suave para a seção
+      setTimeout(() => {
+        const el = document.getElementById(id);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    } else {
+      // Se não está na página, navega para a rota
+      navigate(path);
     }
   };
 
@@ -49,20 +60,18 @@ const BalancoDeCarbono: React.FC = () => {
             </li>
             <li>Criar banco de dados robusto para monitoramento contínuo</li>
             <li>Desenvolver modelos preditivos para balanço de carbono</li>
-            <li>
-              Contribuir para políticas públicas de energia sustentável
-            </li>
+            <li>Contribuir para políticas públicas de energia sustentável</li>
           </ul>
         </section>
 
-        {/* 🔹 Menu de navegação (agora aqui embaixo) */}
+        {/* 🔹 Menu de navegação (atualizado com clique instantâneo) */}
         <nav className="bg-white shadow-sm border border-gray-200 rounded-md">
           <ul className="flex justify-start md:justify-center overflow-x-auto whitespace-nowrap text-sm font-medium">
             {menuItems.map((item) => (
               <li
                 key={item.id}
                 className="px-4 py-3 cursor-pointer hover:bg-[#e6f3ff] hover:text-[#0077b6] transition"
-                onClick={() => scrollToSection(item.id)}
+                onClick={() => handleMenuClick(item.path, item.id)} // ✅ Adicionado
               >
                 {item.label}
               </li>
@@ -205,4 +214,4 @@ const BalancoDeCarbono: React.FC = () => {
   );
 };
 
-export default BalancoDeCarbono;
+export default FurnasInfo;
