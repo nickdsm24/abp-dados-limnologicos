@@ -13,7 +13,7 @@ const FurnasInfo: React.FC = () => {
     { id: "pesquisas", label: "Pesquisas", path: "/furnas-pesquisas" },
     { id: "publicacoes", label: "Publicações", path: "/furnas-publicacoes" },
     { id: "imagens", label: "Imagens", path: "/furnas-imagens" },
-    { id: "links", label: "Links", path: "/furnas-links" },
+    { id: "links", label: "Links", path: "/furnas-link" },
   ];
 
   // ✅ Função para navegação instantânea
