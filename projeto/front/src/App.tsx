@@ -10,7 +10,6 @@ import SimaMenu from "./pages/sima/SimaMenu";
 import SimaTable from "./pages/sima/PageSimaTable";
 import SimaGraph from "./pages/sima/SimaGraph";
 import SimaMap from "./pages/sima/SimaMap";
-import {SimaInfo} from "./pages/sima/SimaInfo";
 import BalcarMenu from "./pages/balcar/BalcarMenu";
 import BalcarTable from "./pages/balcar/PageBalcarTable";
 import BalcarGraph from "./pages/balcar/BalcarGraph";
@@ -66,7 +65,6 @@ function AppWithRouter() {
           <Route path="/sima-table" element={<SimaTable />} />
           <Route path="/sima-graph" element={<SimaGraph />} />
           <Route path="/sima-map" element={<SimaMap />} />
-          <Route path="/sima-info" element={<SimaInfo />} />
           <Route path="/balcar" element={<BalcarMenu />} />
           <Route path="/balcar-table" element={<BalcarTable />} />
           <Route path="/balcar-graph" element={<BalcarGraph />} />
