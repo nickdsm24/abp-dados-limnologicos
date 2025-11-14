@@ -114,17 +114,15 @@ const SimaGraph: React.FC = () => {
     const handleMetricChange = useCallback((key: string) => {
         setSelectedMetrics((prev) => {
             if (prev.includes(key)) {
-                // Não permite desmarcar se for a única selecionada
-                if (prev.length > 1) {
-                    return prev.filter((k) => k !== key);
-                }
-                return prev;
+                // ** ALTERAÇÃO AQUI: Não verifica o tamanho, permitindo lista vazia **
+                return prev.filter((k) => k !== key);
             } else {
                 // Adiciona a nova métrica
                 return [...prev, key];
             }
         });
     }, []);
+
 
     // --- Busca de dados da API ---
     useEffect(() => {
@@ -185,7 +183,7 @@ const SimaGraph: React.FC = () => {
             .map((metricKey) => {
                 const metricInfo = METRICS[metricKey];
                 // Ignora métricas não definidas
-                if (!metricInfo) return null; 
+                if (!metricInfo) return null;
 
                 const avgData: (number | null)[] = [];
 
@@ -273,19 +271,19 @@ const SimaGraph: React.FC = () => {
                 },
                 grid: {
                     // Apenas o primeiro eixo desenha as linhas de grade para não poluir
-                    drawOnChartArea: index === 0, 
+                    drawOnChartArea: index === 0,
                     color: colors.sidebarBorder + '40',
                 },
                 ticks: {
                     color: color,
-                    callback: function (value) {
+                    callback: function (value: any) {
                         return value + " " + unit;
                     },
                 },
                 // Permite o "stacking" de múltiplos eixos no mesmo lado
                 // offset: true,
                 // Garantir que o eixo comece de um ponto relevante, não de zero forçadamente
-                beginAtZero: false, 
+                beginAtZero: false,
             };
         });
 
@@ -344,7 +342,7 @@ const SimaGraph: React.FC = () => {
                 }}
             >
                 <div className="text-xl font-semibold animate-pulse">
-                    Carregando dados SIMA (até 10000 registros)... 📊
+                    Carregando dados SIMA (até 10000 registros)...
                 </div>
             </div>
         );
@@ -413,7 +411,7 @@ const SimaGraph: React.FC = () => {
                     className="text-2xl font-bold mb-6 text-center md:text-left"
                     style={{ color: colors.primary }}
                 >
-                    Mim dê salário
+                    Dados Sima (Médias por estação)
                 </h1>
 
                 {/* Seletor de Métricas */}
@@ -425,11 +423,10 @@ const SimaGraph: React.FC = () => {
                         {Object.entries(METRICS).map(([key, info]) => (
                             <label
                                 key={key}
-                                className={`cursor-pointer inline-flex items-center p-2 rounded-lg text-sm font-medium transition-all shadow-md flex-shrink-0 ${
-                                    selectedMetrics.includes(key)
+                                className={`cursor-pointer inline-flex items-center p-2 rounded-lg text-sm font-medium transition-all shadow-md flex-shrink-0 ${selectedMetrics.includes(key)
                                         ? `text-white ring-2 ring-offset-2 ring-offset-${colors.sidebarBorder} ring-[${info.color}]`
                                         : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                                }`}
+                                    }`}
                                 // Estilos inline para garantir a cor dinâmica do Tailwind
                                 style={
                                     selectedMetrics.includes(key)
@@ -442,10 +439,11 @@ const SimaGraph: React.FC = () => {
                                     checked={selectedMetrics.includes(key)}
                                     onChange={() => handleMetricChange(key)}
                                     className="hidden"
-                                    disabled={
-                                        selectedMetrics.includes(key) &&
-                                        selectedMetrics.length === 1
-                                    }
+                                    // ** ALTERAÇÃO AQUI: A remoção da propriedade 'disabled' é a chave **
+                                    // disabled={
+                                    //     selectedMetrics.includes(key) &&
+                                    //     selectedMetrics.length === 1
+                                    // }
                                 />
                                 {info.label} ({info.unit})
                             </label>
@@ -460,7 +458,7 @@ const SimaGraph: React.FC = () => {
                     ) : (
                         <div className="flex justify-center items-center h-full">
                             <p className="text-xl text-gray-400">
-                                Por favor, selecione pelo menos uma métrica acima.
+                                Selecione pelo menos uma métrica acima.
                             </p>
                         </div>
                     )}

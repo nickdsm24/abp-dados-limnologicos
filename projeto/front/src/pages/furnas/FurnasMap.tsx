@@ -337,19 +337,6 @@ const SidebarFurnas: React.FC<SidebarPropsFurnas> = ({
         </div>
       </div>
 
-      <button
-        className={`w-full p-2 mb-6 rounded-lg font-semibold text-white shadow-md transition-colors hover:opacity-90`}
-        style={{ backgroundColor: colors.primary }} // (Azul primário)
-        onClick={() => {
-          onSelectItem("all");
-          alert("Funcionalidade 'Me localizar' a ser implementada com a API de Geolocation.");
-        }}
-      >
-        <div className="flex items-center justify-center space-x-2">
-          <span>📍 Me localizar</span>
-        </div>
-      </button>
-
       <div className="mb-4">
         <h3 className="font-semibold text-sm mb-2" style={{ color: colors.sidebarText }}>
           Tipo
