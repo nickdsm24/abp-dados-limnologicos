@@ -496,7 +496,7 @@ const FurnasMap: React.FC = () => {
     return [...reservatorioItems, ...sitioItems];
   }, [reservatorios, sitios]);
 
-  // Lógica de filtragem
+  // Lógica de filtragem base (para a Sidebar)
   const filteredDataItems = useMemo(() => {
     let list = allData;
 
@@ -526,17 +526,29 @@ const FurnasMap: React.FC = () => {
     return list;
   }, [allData, tipoFiltro, statusFiltro, searchText]);
 
-  // Filtro final (Aplica a seleção do item único)
+  // --- NOVO: Lógica de Toggle de Seleção ---
+  const handleSelectItemToggle = (id: string) => {
+    // Se o item clicado for o mesmo que já está selecionado, deseleciona (volta para "all")
+    if (selectedItemId === id) {
+      setSelectedItemId("all");
+    } else {
+      // Caso contrário, seleciona o novo item
+      setSelectedItemId(id);
+    }
+  };
+
+  // Filtro final (Aplica a seleção do item único para o mapa)
   const filteredMapItems = useMemo(() => {
     if (selectedItemId === "all") {
+      // Se "all" estiver selecionado, o mapa mostra todos os itens filtrados
       return filteredDataItems;
     }
-    // Retorna APENAS o item selecionado, se ele estiver na lista base
+    // Se um item específico estiver selecionado, mostra APENAS ele no mapa
     const selected = filteredDataItems.filter((item) => {
       const idString = `${item.type}-${item.type === "reservatorio" ? item.idreservatorio : item.idsitio}`;
       return idString === selectedItemId;
     });
-    return selected.length > 0 ? selected : filteredDataItems;
+    return selected; // Retorna apenas o item selecionado (pode ser vazio se o item foi filtrado para fora)
   }, [selectedItemId, filteredDataItems]);
 
   // Separa os itens filtrados para o mapa
@@ -594,7 +606,7 @@ const FurnasMap: React.FC = () => {
         totalSitios={totalSitios}
         totalReservatorios={totalReservatorios}
         selectedItemId={selectedItemId}
-        onSelectItem={setSelectedItemId} // Função para centralizar no mapa
+        onSelectItem={handleSelectItemToggle}
       />
 
       {/* Container do Mapa (flex-1) */}
