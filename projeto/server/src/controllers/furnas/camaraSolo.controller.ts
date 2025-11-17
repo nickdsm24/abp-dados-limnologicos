@@ -5,7 +5,7 @@ import { logger } from "../../configs/logger";
 import { DataFormatterService } from "../../services/dataFormatterService";
 import { ExportService, ExportFileOptions } from "../../services/exportService";
 // 2. Importa o Model
-import { CamaraSoloModel } from "../../models/camaraSolo.model";
+import { CamaraSoloModel } from "../../models/furnas/camaraSolo.model";
 
 const PAGE_SIZE = Number(process.env.PAGE_SIZE) || 10;
 

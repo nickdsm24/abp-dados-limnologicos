@@ -96,7 +96,7 @@ const Sidebar: React.FC = () => {
   // --- ITENS DE MENU MODIFICADOS ---
   const menuItems: MenuItem[] = [
     { label: "Início", path: "/", icon: HomeIcon },
-    { label: "Informações do Projeto", path: "/info", icon: InfoIcon }, // Ícone alterado
+    { label: "Informações do Projeto", path: "/sima-info", icon: InfoIcon }, // Ícone alterado
   ];
 
   const isActive = (path: string) => location.pathname === path;

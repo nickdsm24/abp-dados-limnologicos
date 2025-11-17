@@ -5,7 +5,7 @@ import { logger } from "../../configs/logger";
 import { DataFormatterService } from "../../services/dataFormatterService";
 import { ExportService, ExportFileOptions } from "../../services/exportService";
 // 2. Importa o Model
-import { CampanhaModel } from "../../models/campanha.model";
+import { CampanhaModel } from "../../models/furnas/campanha.model";
 
 const PAGE_SIZE = Number(process.env.PAGE_SIZE) || 10;
 

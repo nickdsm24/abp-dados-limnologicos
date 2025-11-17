@@ -1,146 +1,179 @@
+//src/controllers/furnas/carbono.controller.ts
 import { Request, Response } from 'express';
-import { furnasPool } from '../../configs/db';
 import { logger } from '../../configs/logger';
+// 1. Importa os Serviços (formatação e exportação)
+import { DataFormatterService } from '../../services/dataFormatterService';
+import { ExportService, ExportFileOptions } from '../../services/exportService';
+// 2. Importa o novo Model
+import { CarbonoModel } from '../../models/furnas/carbono.model';
 
 const PAGE_SIZE = Number(process.env.PAGE_SIZE) || 10;
 
-// Mapeamento
-const mapRowToCarbono = (row: any) => ({
-    idCarbono: row.idcarbono,
-    dataMedida: row.datamedida,
-    horaMedida: row.horamedida,
-    dc: row.dc,
-    doc: row.doc,
-    poc: row.poc,
-    toc: row.toc,
-    dic: row.dic,
-    tc: row.tc,
-    
-    // Objeto Aninhado para o Sítio
-    sitio: row.idsitio ? {
-        idsitio: row.idsitio,
-        nome: row.sitio_nome,
-        lat: row.sitio_lat,
-        lng: row.sitio_lng,
-        descricao: row.sitio_descricao,
-    } : undefined,
-    
-    // Objeto Aninhado para a Campanha
-    campanha: row.idcampanha ? {
-        idcampanha: row.idcampanha,
-        nroCampanha: row.nrocampanha,
-        dataInicio: row.campanha_datainicio,
-        dataFim: row.campanha_datafim,
-    } : undefined,
+// --- ENDPOINTS ---
 
-    // Objeto Aninhado para o Reservatório
-    reservatorio: row.idreservatorio ? {
-        idreservatorio: row.idreservatorio,
-        nome: row.reservatorio_nome,
-    } : undefined,
-});
-
-// getAll
+/**
+ * Endpoint: getAll
+ * Busca dados paginados e filtrados.
+ */
 export const getAll = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || PAGE_SIZE;
-        const offset = (page - 1) * limit;
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || PAGE_SIZE;
 
-        const result = await furnasPool.query(
-            `
-            SELECT 
-                a.idCarbono,
-                a.dataMedida,
-                a.horaMedida,
-                a.dc,
-                a.doc,
-                a.poc,
-                a.toc,
-                a.dic,
-                a.tc,
-                b.idsitio,
-                b.nome AS sitio_nome,
-                c.idcampanha,
-                c.nroCampanha
-            FROM tbcarbono a
-            LEFT JOIN tbsitio b ON a.idSitio = b.idSitio
-            LEFT JOIN tbcampanha c ON a.idCampanha = c.idCampanha
-            ORDER BY a.dataMedida DESC, a.horaMedida DESC
-            LIMIT $1 OFFSET $2;
-            `, [limit, offset],
-        );
+    // 1. Pede os dados paginados ao Model, passando os filtros
+    // ✅ MUDANÇA AQUI: Passa req.query para o model aplicar os filtros
+    const { data: rawData, total } = await CarbonoModel.findPaginated({
+      filters: req.query,
+      page,
+      limit,
+    });
 
-        const countResult = await furnasPool.query("SELECT COUNT(*) FROM tbcarbono");
-        const total = Number(countResult.rows[0].count);
+    // 2. Formata os dados "crus" usando o Service global
+    // ✅ MUDANÇA AQUI: Usa o DataFormatterService
+    const data = rawData.map(DataFormatterService.formatListRow);
 
-        // Mapeia o resultado para o padrão aninhado, mantendo a listagem concisa
-        const data = result.rows.map((row: any) => ({
-            ...mapRowToCarbono(row),
-            sitio: row.idsitio ? { idsitio: row.idsitio, nome: row.sitio_nome } : undefined,
-            campanha: row.idcampanha ? { idcampanha: row.idcampanha, nroCampanha: row.nrocampanha } : undefined,
-            reservatorio: undefined,
-        }));
+    // 3. Envia a resposta (sem mudança na estrutura)
+    res.status(200).json({
+      success: true,
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      data,
+    });
+  } catch (error: any) {
+    logger.error('Erro ao consultar tbcarbono', {
+      message: error.message,
+      stack: error.stack,
+    });
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao realizar operação.',
+    });
+  }
+};
 
-
-        res.status(200).json({
-            success: true,
-            page, limit, total,
-            totalPages: Math.ceil(total / limit),
-            data,
-        });
-
-    } catch(error:any){
-        logger.error("Erro ao consultar a tabela carbono", {message: error.message, stack:error.stack,});
-        res.status(500).json({success: false, error:"Erro ao realizar operação.",});
-    };
-}
-
-// getById
+/**
+ * Endpoint: getById
+ * Busca um registro único por ID.
+ */
 export const getById = async (req: Request, res: Response): Promise<void> => {
-    try{
-        const idCarbono = Number(req.params.idCarbono);
-        if(isNaN(idCarbono)){
-            res.status(400).json({success: false, error:`ID ${req.params.idCarbono} inválido.`});
-            return;
-        }
+  try {
+    const idCarbono = Number(req.params.idCarbono);
 
-        const result = await furnasPool.query(
-            `
-            SELECT 
-                a.*,
-                b.idsitio,
-                b.nome AS sitio_nome,
-                b.descricao AS sitio_descricao,
-                b.lat AS sitio_lat,
-                b.lng AS sitio_lng,
-                c.idcampanha,
-                c.nroCampanha,
-                c.dataInicio AS campanha_datainicio,
-                c.dataFim AS campanha_datafim,
-                d.idreservatorio,
-                d.nome AS reservatorio_nome
-            FROM tbcarbono a
-            LEFT JOIN tbsitio b ON a.idSitio = b.idSitio
-            LEFT JOIN tbcampanha c ON a.idCampanha = c.idCampanha
-            LEFT JOIN tbreservatorio d ON c.idReservatorio = d.idReservatorio
-            WHERE a.idCarbono = $1;
-            `, [idCarbono],
-        );
-
-        if(result.rows.length === 0){
-            res.status(404).json({success: false, error:"Registro de carbono não encontrado.",});
-            return;   
-        }
-
-        // Mapeia o resultado único para o padrão aninhado
-        const data = mapRowToCarbono(result.rows[0]);
-
-        res.status(200).json({success: true, data,});
-
-    } catch(error:any){
-        logger.error(`Erro ao consultar registro por ID na tabela tbcarbono: ${req.params.idCarbono}`, {
-            message: error.message, stack: error.stack,});
-        res.status(500).json({success: false, error:"Erro ao realizar operação.",});
+    if (isNaN(idCarbono)) {
+      res.status(400).json({
+        success: false,
+        error: `ID ${req.params.idCarbono} inválido.`,
+      });
+      return;
     }
+
+    // 1. Pede o dado ao Model
+    const rawData = await CarbonoModel.findById(idCarbono);
+
+    // 2. Verifica se foi encontrado
+    if (!rawData) {
+      res.status(404).json({
+        success: false,
+        error: `Registro de carbono não encontrado.`,
+      });
+      return;
+    }
+
+    // 3. Formata o dado "cru"
+    // ✅ MUDANÇA AQUI: Conforme o exemplo, o getById retorna os dados crus do model
+    const data = rawData; 
+
+    // 4. Envia a resposta
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error: any) {
+    logger.error(`Erro ao consultar tbcarbono por ID ${req.params.idCarbono}`, {
+      message: error.message,
+      stack: error.stack,
+    });
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao realizar operação.',
+    });
+  }
+};
+
+/**
+ * Endpoint: exportData
+ * Exporta dados em CSV ou XLSX com base nos filtros.
+ * ✅ NOVO ENDPOINT ADICIONADO
+ */
+export const exportData = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // 1. Extrai opções do body (igual ao exemplo)
+    const { format, range, includeHeaders, delimiter, encoding, filters, page, limit } =
+      req.body as ExportFileOptions & {
+        range: 'page' | 'all';
+        filters: any;
+        page?: number;
+        limit?: number;
+      };
+
+    const exportOptions: ExportFileOptions = {
+      format,
+      includeHeaders,
+      delimiter,
+      encoding,
+    };
+
+    let rawData: any[];
+
+    // 2. Busca os dados no Model com base no 'range'
+    // ✅ MUDANÇA AQUI: Usa CarbonoModel
+    if (range === 'page') {
+      const { data } = await CarbonoModel.findPaginated({
+        filters: filters || {},
+        page: page || 1,
+        limit: limit || PAGE_SIZE,
+      });
+      rawData = data;
+    } else {
+      // range === 'all'
+      rawData = await CarbonoModel.findAll({
+        filters: filters || {},
+      });
+    }
+
+    // 3. Formata os dados para "lista"
+    // ✅ MUDANÇA AQUI: Usa o DataFormatterService
+    const formattedData = rawData.map(DataFormatterService.formatListRow);
+
+    // 4. Gera o buffer do arquivo (igual ao exemplo)
+    const fileBuffer = await ExportService.generateExportFile(formattedData, exportOptions);
+
+    // 5. Define os headers da resposta
+    // ✅ MUDANÇA AQUI: Altera o nome do arquivo
+    const fileName = `export_carbono_${new Date().toISOString().slice(0, 10)}.${format}`;
+
+    if (format === 'xlsx') {
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+    } else {
+      res.setHeader('Content-Type', 'text/csv; charset=' + (encoding || 'utf-8'));
+    }
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+    // 6. Envia o buffer como resposta (igual ao exemplo)
+    res.send(fileBuffer);
+  } catch (error: any) {
+    logger.error('Erro ao exportar dados de tbcarbono', {
+      message: error.message,
+      stack: error.stack,
+    });
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao gerar exportação.',
+    });
+  }
 };

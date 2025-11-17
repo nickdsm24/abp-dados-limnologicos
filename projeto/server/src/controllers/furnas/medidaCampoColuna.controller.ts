@@ -1,82 +1,37 @@
 import { Request, Response } from "express";
-import { furnasPool } from "../../configs/db";
 import { logger } from "../../configs/logger";
+// 1. Importa os Serviços (formatação e exportação)
+import { DataFormatterService } from "../../services/dataFormatterService";
+import { ExportService, ExportFileOptions } from "../../services/exportService";
+// 2. Importa o novo Model
+import { MedidaCampoColunaModel } from "../../models/furnas/medidaCampoColuna.model";
 
 const PAGE_SIZE = Number(process.env.PAGE_SIZE) || 10;
 
+// --- ENDPOINTS ---
+
+/**
+ * Endpoint: getAll
+ * Busca dados paginados e filtrados.
+ */
 export const getAll = async (req: Request, res: Response): Promise<void> => {
   try {
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || PAGE_SIZE;
-    const offset = (page - 1) * limit;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || PAGE_SIZE;
 
-    // Consulta com paginação e joins
-    const result = await furnasPool.query(
-      `
-      SELECT 
-        a.idMedidaCampoColuna,
-        a.dataMedida,
-        a.horaMedida,
-        a.profundidade,
-        a.secchi,
-        a.tempagua,
-        a.condutividade,
-        a._do,
-        a.ph,
-        a.turbidez,
-        a.materialemsuspensao,
-        a.intensidadeluminosa,
-        b.idCampanha,
-        b.nroCampanha,
-        c.idSitio,
-        c.nome AS sitio_nome,
-        c.lat AS sitio_lat,
-        c.lng AS sitio_lng
-      FROM tbmedidacampocoluna AS a
-      LEFT JOIN tbcampanha AS b
-        ON a.idCampanha = b.idCampanha
-      LEFT JOIN tbsitio AS c
-        ON a.idSitio = c.idSitio
-      ORDER BY a.dataMedida, a.horaMedida
-      LIMIT $1 OFFSET $2
-      `,
-      [limit, offset],
-    );
+    // 1. Pede os dados paginados ao Model, passando os filtros
+    // ✅ MUDANÇA AQUI: Passa req.query para o model aplicar os filtros
+    const { data: rawData, total } = await MedidaCampoColunaModel.findPaginated({
+      filters: req.query,
+      page,
+      limit,
+    });
 
-    // Consulta total de registros
-    const countResult = await furnasPool.query("SELECT COUNT(*) FROM tbmedidacampocoluna");
-    const total = Number(countResult.rows[0].count);
+    // 2. Formata os dados "crus" usando o Service global
+    // ✅ MUDANÇA AQUI: Usa o DataFormatterService, substituindo o map customizado
+    const data = rawData.map(DataFormatterService.formatListRow);
 
-    // Dados formatados
-    const data = result.rows.map((row: any) => ({
-      idMedidaCampoColuna: row.idMedidaCampoColuna,
-      campanha: row.idCampanha
-        ? {
-            idCampanha: row.idCampanha,
-            nroCampanha: row.nroCampanha,
-          }
-        : undefined,
-      sitio: row.idSitio
-        ? {
-            idSitio: row.idSitio,
-            nome: row.sitio_nome,
-            lat: row.sitio_lat,
-            lng: row.sitio_lng,
-          }
-        : undefined,
-      dataMedida: row.dataMedida,
-      horaMedida: row.horaMedida,
-      profundidade: row.profundidade,
-      secchi: row.secchi,
-      tempagua: row.tempagua,
-      condutividade: row.condutividade,
-      do: row._do,
-      ph: row.ph,
-      turbidez: row.turbidez,
-      materialemsuspensao: row.materialemsuspensao,
-      intensidadeluminosa: row.intensidadeluminosa,
-    }));
-
+    // 3. Envia a resposta (sem mudança na estrutura)
     res.status(200).json({
       success: true,
       page,
@@ -90,7 +45,6 @@ export const getAll = async (req: Request, res: Response): Promise<void> => {
       message: error.message,
       stack: error.stack,
     });
-
     res.status(500).json({
       success: false,
       error: "Erro ao realizar a operação.",
@@ -98,88 +52,51 @@ export const getAll = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+/**
+ * Endpoint: getById
+ * Busca um registro único por ID.
+ */
 export const getById = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    // ✅ MUDANÇA AQUI: Padroniza o nome do parâmetro de rota
+    const idMedidaCampoColuna = Number(req.params.idMedidaCampoColuna);
 
-    const result = await furnasPool.query(
-      `
-      SELECT 
-        a.idMedidaCampoColuna,
-        a.dataMedida,
-        a.horaMedida,
-        a.profundidade,
-        a.secchi,
-        a.tempagua,
-        a.condutividade,
-        a._do,
-        a.ph,
-        a.turbidez,
-        a.materialemsuspensao,
-        a.intensidadeluminosa,
-        b.idCampanha,
-        b.nroCampanha,
-        c.idSitio,
-        c.nome AS sitio_nome,
-        c.lat AS sitio_lat,
-        c.lng AS sitio_lng
-      FROM tbmedidacampocoluna AS a
-      LEFT JOIN tbcampanha AS b
-        ON a.idCampanha = b.idCampanha
-      LEFT JOIN tbsitio AS c
-        ON a.idSitio = c.idSitio
-      WHERE a.idMedidaCampoColuna = $1
-      `,
-      [id]
-    );
-
-    if (result.rows.length === 0) {
-      res.status(404).json({
+    // ✅ MUDANÇA AQUI: Adiciona validação de NaN
+    if (isNaN(idMedidaCampoColuna)) {
+      res.status(400).json({
         success: false,
-        message: `O ID ${id} não foi encontrado.`,
+        error: `ID ${req.params.idMedidaCampoColuna} inválido.`,
       });
       return;
     }
 
-    const data = result.rows.map((row: any) => ({
-      idMedidaCampoColuna: row.idMedidaCampoColuna,
-      campanha: row.idCampanha
-        ? {
-            idCampanha: row.idCampanha,
-            nroCampanha: row.nroCampanha,
-          }
-        : undefined,
-      sitio: row.idSitio
-        ? {
-            idSitio: row.idSitio,
-            nome: row.sitio_nome,
-            lat: row.sitio_lat,
-            lng: row.sitio_lng,
-          }
-        : undefined,
-      dataMedida: row.dataMedida,
-      horaMedida: row.horaMedida,
-      profundidade: row.profundidade,
-      secchi: row.secchi,
-      tempagua: row.tempagua,
-      condutividade: row.condutividade,
-      do: row._do,
-      ph: row.ph,
-      turbidez: row.turbidez,
-      materialemsuspensao: row.materialemsuspensao,
-      intensidadeluminosa: row.intensidadeluminosa,
-    }));
+    // 1. Pede o dado ao Model
+    const rawData = await MedidaCampoColunaModel.findById(idMedidaCampoColuna);
 
+    // 2. Verifica se foi encontrado
+    if (!rawData) {
+      res.status(404).json({
+        success: false,
+        error: `Registro de Medida de Campo em Coluna não encontrado.`,
+      });
+      return;
+    }
+
+    // 3. Formata o dado "cru"
+    // ✅ MUDANÇA AQUI: Conforme o exemplo, o getById retorna os dados crus do model
+    // O map customizado do controller antigo foi removido.
+    const data = rawData;
+
+    // 4. Envia a resposta
     res.status(200).json({
       success: true,
-      data: data[0],
+      data,
     });
   } catch (error: any) {
     logger.error("Erro ao consultar tbmedidacampocoluna por ID", {
       message: error.message,
       stack: error.stack,
     });
-
     res.status(500).json({
       success: false,
       error: "Erro ao realizar a operação.",
@@ -187,4 +104,78 @@ export const getById = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// feito
+/**
+ * Endpoint: exportData
+ * Exporta dados em CSV ou XLSX com base nos filtros.
+ * ✅ NOVO ENDPOINT ADICIONADO
+ */
+export const exportData = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // 1. Extrai opções do body (igual ao exemplo)
+    const { format, range, includeHeaders, delimiter, encoding, filters, page, limit } =
+      req.body as ExportFileOptions & {
+        range: 'page' | 'all';
+        filters: any;
+        page?: number;
+        limit?: number;
+      };
+
+    const exportOptions: ExportFileOptions = {
+      format,
+      includeHeaders,
+      delimiter,
+      encoding,
+    };
+
+    let rawData: any[];
+
+    // 2. Busca os dados no Model com base no 'range'
+    // ✅ MUDANÇA AQUI: Usa MedidaCampoColunaModel
+    if (range === 'page') {
+      const { data } = await MedidaCampoColunaModel.findPaginated({
+        filters: filters || {},
+        page: page || 1,
+        limit: limit || PAGE_SIZE,
+      });
+      rawData = data;
+    } else {
+      // range === 'all'
+      rawData = await MedidaCampoColunaModel.findAll({
+        filters: filters || {},
+      });
+    }
+
+    // 3. Formata os dados para "lista"
+    // ✅ MUDANÇA AQUI: Usa o DataFormatterService
+    const formattedData = rawData.map(DataFormatterService.formatListRow);
+
+    // 4. Gera o buffer do arquivo (igual ao exemplo)
+    const fileBuffer = await ExportService.generateExportFile(formattedData, exportOptions);
+
+    // 5. Define os headers da resposta
+    // ✅ MUDANÇA AQUI: Altera o nome do arquivo
+    const fileName = `export_medida_campo_coluna_${new Date().toISOString().slice(0, 10)}.${format}`;
+
+    if (format === 'xlsx') {
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+    } else {
+      res.setHeader('Content-Type', 'text/csv; charset=' + (encoding || 'utf-8'));
+    }
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+    // 6. Envia o buffer como resposta (igual ao exemplo)
+    res.send(fileBuffer);
+  } catch (error: any) {
+    logger.error('Erro ao exportar dados de tbmedidacampocoluna', {
+      message: error.message,
+      stack: error.stack,
+    });
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao gerar exportação.',
+    });
+  }
+};

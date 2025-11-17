@@ -1,48 +1,49 @@
-import { furnasPool } from '../configs/db';
-import { FilterService } from '../services/filterService';
+import { furnasPool } from '../../configs/db';
+import { FilterService } from '../../services/filterService';
 
 // Mapeia as chaves do frontend (filtros) para as colunas reais do banco de dados.
-const campanhaColumnMap = {
-    // Chaves de Range (type: 'number' ou 'date')
-    idcampanha: 'a.idcampanha',
-    datainicio: 'a.datainicio',
-    datafim: 'a.datafim',
+const campoPorTabelaColumnMap = {
+    // Chaves de Range (type: 'number')
+    idCampoPorTabela: 'a.idCampoPorTabela',
+    ordem: 'a.ordem',
+    idTabela: 'a.idTabela', // Embora seja a FK, pode ser filtrado
 
-    // Chaves de Igualdade (type: 'string')
-    nrocampanha: 'a.nrocampanha',
-    instituicao: 'b.nome', // <-- Filtra por 'b.nome'
-    reservatorio: 'c.nome', // <-- Filtra por 'c.nome'
+    // Chaves de Igualdade (type: 'string' ou 'boolean')
+    nome: 'a.nome',
+    rotulo: 'a.rotulo',
+    unidade: 'a.unidade',
+    principal: 'a.principal',
+    tipo: 'a.tipo',
+    tabela: 'b.nome',       // Filtra por 'b.nome'
+    tabela_rotulo: 'b.rotulo', // Filtra por 'b.rotulo'
 };
 
 /**
  * Constrói a query de listagem e contagem dinamicamente, aplicando filtros.
  * @param filters Um objeto (ex: req.query) com os filtros.
  */
-const buildCampanhaQuery = (filters: any) => {
+const buildCampoPorTabelaQuery = (filters: any) => {
     // Query base para selecionar os dados (baseado no getAll original)
     const baseQuery = `
-        SELECT 
-            a.idcampanha, a.nrocampanha, a.datainicio, a.datafim,
-            b.idinstituicao, b.nome AS instituicao_nome,
-            c.idreservatorio, c.nome AS reservatorio_nome,
-            c.lat AS reservatorio_lat, c.lng AS reservatorio_lng
-        FROM tbcampanha AS a
-        LEFT JOIN tbinstituicao AS b ON a.idinstituicao = b.idinstituicao
-        LEFT JOIN tbreservatorio AS c ON a.idreservatorio = c.idreservatorio
+        SELECT
+            a.idCampoPorTabela, a.nome, a.rotulo, a.unidade,
+            a.principal, a.ordem, a.tipo,
+            b.idTabela AS idtabela, b.nome AS tabela_nome, b.rotulo AS tabela_rotulo
+        FROM tbcampoportabela a
+        LEFT JOIN tbtabela b ON a.idTabela = b.idTabela
     `;
 
     // Query base para contagem (DEVE ter os mesmos JOINs para filtros)
     const countQuery = `
-        SELECT COUNT(a.idcampanha)
-        FROM tbcampanha AS a
-        LEFT JOIN tbinstituicao AS b ON a.idinstituicao = b.idinstituicao
-        LEFT JOIN tbreservatorio AS c ON a.idreservatorio = c.idreservatorio
+        SELECT COUNT(a.idCampoPorTabela)
+        FROM tbcampoportabela a
+        LEFT JOIN tbtabela b ON a.idTabela = b.idTabela
     `;
 
     // Usa o FilterService para construir a cláusula WHERE
     const { whereClause, params, nextIndex } = FilterService.buildFilter(
         filters,
-        campanhaColumnMap,
+        campoPorTabelaColumnMap,
         1, // Começa a contagem de parâmetros em $1
     );
 
@@ -51,7 +52,7 @@ const buildCampanhaQuery = (filters: any) => {
     const paramIndex = nextIndex;
 
     // Query principal com ordenação (do getAll original)
-    const mainQuery = `${baseQuery} ${whereString} ORDER BY c.nome, a.nrocampanha`;
+    const mainQuery = `${baseQuery} ${whereString} ORDER BY b.nome, a.ordem`;
     // Query de contagem (sem ordenação)
     const countText = `${countQuery} ${whereString}`;
 
@@ -59,9 +60,9 @@ const buildCampanhaQuery = (filters: any) => {
 };
 
 /**
- * Classe Model para encapsular o acesso a dados da tbcampanha.
+ * Classe Model para encapsular o acesso a dados da tbcampoportabela.
  */
-export class CampanhaModel {
+export class CampoPorTabelaModel {
     /**
      * Busca uma lista paginada de registros, aplicando filtros.
      */
@@ -75,7 +76,7 @@ export class CampanhaModel {
 
         // 1. Constrói a query base com filtros
         const { mainQuery, countText, values, paramIndex } =
-            buildCampanhaQuery(filters);
+            buildCampoPorTabelaQuery(filters);
 
         // 2. Adiciona paginação à query
         const paginatedQuery = `${mainQuery} LIMIT $${paramIndex} OFFSET $${
@@ -104,7 +105,7 @@ export class CampanhaModel {
         const { filters } = options;
         
         // 1. Constrói a query base (ignora contagem e paginação)
-        const { mainQuery, values } = buildCampanhaQuery(filters);
+        const { mainQuery, values } = buildCampoPorTabelaQuery(filters);
         
         // 2. Executa a query
         const result = await furnasPool.query(mainQuery, values);
@@ -118,20 +119,20 @@ export class CampanhaModel {
      * para a visualização de detalhe.
      */
     public static async findById(id: number): Promise<any | null> {
-        // Query baseada no getById original
+        // Query baseada no getById original (mais completa, com a.*)
         const result = await furnasPool.query(
             `
             SELECT 
-                a.idcampanha, a.nrocampanha, a.datainicio, a.datafim,
-                b.idinstituicao, b.nome AS instituicao_nome,
-                c.idreservatorio, c.nome AS reservatorio_nome,
-                c.lat AS reservatorio_lat, c.lng AS reservatorio_lng
-            FROM tbcampanha AS a
-            LEFT JOIN tbinstituicao AS b 
-                ON a.idinstituicao = b.idinstituicao
-            LEFT JOIN tbreservatorio AS c 
-                ON a.idreservatorio = c.idreservatorio
-            WHERE a.idcampanha = $1
+                a.*,
+                b.idTabela AS idtabela,
+                b.nome AS tabela_nome,
+                b.rotulo AS tabela_rotulo,
+                b.excecao AS tabela_excecao,
+                b.sitio AS tabela_sitio,
+                b.campanha AS tabela_campanha
+            FROM tbcampoportabela a
+            LEFT JOIN tbtabela b ON a.idTabela = b.idTabela
+            WHERE a.idCampoPorTabela = $1;
             `,
             [id],
         );

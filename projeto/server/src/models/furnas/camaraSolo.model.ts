@@ -1,46 +1,54 @@
-import { furnasPool } from '../configs/db';
-import { FilterService } from '../services/filterService';
+import { furnasPool } from '../../configs/db';
+import { FilterService } from '../../services/filterService';
 
 // Mapeia as chaves do frontend (filtros) para as colunas reais do banco de dados.
-const campanhaPorTabelaColumnMap = {
-    // Chaves de Range (type: 'number')
-    idCampanha: 'a.idCampanha',
-    idTabela: 'a.idTabela',
+const camaraSoloColumnMap = {
+    // Chaves de Range (type: 'number' ou 'date')
+    idCamaraSolo: 'a.idCamaraSolo',
+    dataMedida: 'a.dataMedida',
+    ch4: 'a.ch4',
+    co2: 'a.co2',
+    n2o: 'a.n2o',
+    tempar: 'a.tempar',
+    tempsolo: 'a.tempsolo',
+    vento: 'a.vento',
+    altitude: 'a.altitude',
 
     // Chaves de Igualdade (type: 'string')
-    campanha: 'b.nroCampanha', // Filtra por 'b.nroCampanha'
-    tabela: 'c.nome',       // Filtra por 'c.nome'
-    rotulo: 'c.rotulo',       // Filtra por 'c.rotulo'
+    sitio: 'c.nome',
+    campanha: 'b.nroCampanha',
+    horaMedida: 'a.horaMedida',
 };
 
 /**
  * Constrói a query de listagem e contagem dinamicamente, aplicando filtros.
  * @param filters Um objeto (ex: req.query) com os filtros.
  */
-const buildCampanhaPorTabelaQuery = (filters: any) => {
+const buildCamaraSoloQuery = (filters: any) => {
     // Query base para selecionar os dados (baseado no getAll original)
     const baseQuery = `
         SELECT
-            a.idCampanha, a.idTabela,
-            b.idCampanha AS idcampanha, b.nroCampanha,
-            c.idTabela AS idtabela, c.nome AS tabela_nome, c.rotulo AS tabela_rotulo
-        FROM tbcampanhaportabela a
-        LEFT JOIN tbcampanha b ON a.idCampanha = b.idCampanha
-        LEFT JOIN tbtabela c ON a.idTabela = c.idTabela
+            a.idCamaraSolo, a.dataMedida, a.horaMedida, a.ch4, a.co2, a.n2o,
+            a.tempar, a.tempsolo, a.vento, a.altitude,
+            b.idCampanha, b.nroCampanha,
+            c.idSitio, c.nome AS sitio_nome, c.lat AS sitio_lat, c.lng AS sitio_lng
+        FROM tbcamarasolo AS a
+        LEFT JOIN tbcampanha AS b ON a.idCampanha = b.idCampanha
+        LEFT JOIN tbsitio AS c ON a.idSitio = c.idSitio
     `;
 
-    // Query base para contagem (DEVE ter os mesmos JOINs para filtros)
+    // Query base para contagem (deve ter os mesmos JOINs para filtros)
     const countQuery = `
-        SELECT COUNT(a.idCampanha)
-        FROM tbcampanhaportabela a
-        LEFT JOIN tbcampanha b ON a.idCampanha = b.idCampanha
-        LEFT JOIN tbtabela c ON a.idTabela = c.idTabela
+        SELECT COUNT(a.idCamaraSolo)
+        FROM tbcamarasolo AS a
+        LEFT JOIN tbcampanha AS b ON a.idCampanha = b.idCampanha
+        LEFT JOIN tbsitio AS c ON a.idSitio = c.idSitio
     `;
 
     // Usa o FilterService para construir a cláusula WHERE
     const { whereClause, params, nextIndex } = FilterService.buildFilter(
         filters,
-        campanhaPorTabelaColumnMap,
+        camaraSoloColumnMap,
         1, // Começa a contagem de parâmetros em $1
     );
 
@@ -49,7 +57,7 @@ const buildCampanhaPorTabelaQuery = (filters: any) => {
     const paramIndex = nextIndex;
 
     // Query principal com ordenação (do getAll original)
-    const mainQuery = `${baseQuery} ${whereString} ORDER BY b.nroCampanha DESC, c.nome`;
+    const mainQuery = `${baseQuery} ${whereString} ORDER BY a.dataMedida DESC, a.horaMedida DESC`;
     // Query de contagem (sem ordenação)
     const countText = `${countQuery} ${whereString}`;
 
@@ -57,9 +65,9 @@ const buildCampanhaPorTabelaQuery = (filters: any) => {
 };
 
 /**
- * Classe Model para encapsular o acesso a dados da tbcampanhaportabela.
+ * Classe Model para encapsular o acesso a dados da tbcamarasolo.
  */
-export class CampanhaPorTabelaModel {
+export class CamaraSoloModel {
     /**
      * Busca uma lista paginada de registros, aplicando filtros.
      */
@@ -73,7 +81,7 @@ export class CampanhaPorTabelaModel {
 
         // 1. Constrói a query base com filtros
         const { mainQuery, countText, values, paramIndex } =
-            buildCampanhaPorTabelaQuery(filters);
+            buildCamaraSoloQuery(filters);
 
         // 2. Adiciona paginação à query
         const paginatedQuery = `${mainQuery} LIMIT $${paramIndex} OFFSET $${
@@ -82,7 +90,6 @@ export class CampanhaPorTabelaModel {
         const paginatedValues = [...values, limit, offset];
 
         // 3. Executa a query de dados e a de contagem em paralelo
-        //    (Nota: A contagem agora usa os filtros, corrigindo o original)
         const [result, countResult] = await Promise.all([
             furnasPool.query(paginatedQuery, paginatedValues),
             furnasPool.query(countText, values), // Contagem total com filtros
@@ -102,7 +109,7 @@ export class CampanhaPorTabelaModel {
         const { filters } = options;
         
         // 1. Constrói a query base (ignora contagem e paginação)
-        const { mainQuery, values } = buildCampanhaPorTabelaQuery(filters);
+        const { mainQuery, values } = buildCamaraSoloQuery(filters);
         
         // 2. Executa a query
         const result = await furnasPool.query(mainQuery, values);
@@ -112,29 +119,26 @@ export class CampanhaPorTabelaModel {
     }
 
     /**
-     * Busca um único registro pela chave composta (idCampanha, idTabela),
-     * com os joins necessários para a visualização de detalhe.
+     * Busca um único registro pelo ID, com os joins necessários
+     * para a visualização de detalhe.
      */
-    public static async findByIds(idCampanha: number, idTabela: number): Promise<any | null> {
-        // Query baseada no getById original (mais completa)
+    public static async findById(id: number): Promise<any | null> {
+        // Query baseada no getById original
         const result = await furnasPool.query(
             `
-            SELECT 
-                a.idCampanha, a.idTabela,
-                b.idCampanha AS idcampanha, b.nroCampanha,
-                b.dataInicio AS campanha_datainicio, b.dataFim AS campanha_datafim,
-                b.idReservatorio AS idreservatorio,
-                c.idTabela AS idtabela, c.nome AS tabela_nome,
-                c.rotulo AS tabela_rotulo, c.excecao AS tabela_excecao,
-                c.sitio AS tabela_sitio, c.campanha AS tabela_campanha,
-                d.nome AS reservatorio_nome
-            FROM tbcampanhaportabela a
-            LEFT JOIN tbcampanha b ON a.idCampanha = b.idCampanha
-            LEFT JOIN tbtabela c ON a.idTabela = c.idTabela
-            LEFT JOIN tbreservatorio d ON b.idReservatorio = d.idReservatorio
-            WHERE a.idCampanha = $1 AND a.idTabela = $2;
+            SELECT
+                a.idCamaraSolo, a.dataMedida, a.horaMedida, a.ch4, a.co2, a.n2o,
+                a.tempar, a.tempsolo, a.vento, a.altitude,
+                b.idCampanha, b.nroCampanha,
+                c.idSitio, c.nome AS sitio_nome, c.lat AS sitio_lat, c.lng AS sitio_lng
+            FROM tbcamarasolo AS a
+            LEFT JOIN tbcampanha AS b
+                ON a.idCampanha = b.idCampanha
+            LEFT JOIN tbsitio AS c
+                ON a.idSitio = c.idSitio
+            WHERE a.idCamaraSolo = $1
             `,
-            [idCampanha, idTabela],
+            [id],
         );
 
         if (result.rows.length === 0) {

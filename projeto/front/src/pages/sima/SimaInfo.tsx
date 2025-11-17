@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 
-export default function App() {
+export default function SimaInfo() {
   return (
     <div className="bg-gray-50 text-gray-800 font-sans">
       {/* Header */}

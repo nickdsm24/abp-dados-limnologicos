@@ -1,105 +1,177 @@
 import { Request, Response } from "express";
-import { simaPool} from "../../configs/db";
 import { logger } from "../../configs/logger";
+
+// 1. Importa os Serviços
+import { DataFormatterService } from "../../services/dataFormatterService";
+import { ExportService, ExportFileOptions } from "../../services/exportService";
+
+// 2. Importa o Model
+import { CampoTabelaModel } from "../../models/sima/campoTabela.model";
 
 const PAGE_SIZE = Number(process.env.PAGE_SIZE) || 10;
 
-// Mapeamento
-const mapRowToCampoTabela = (row: any) => ({
-    idcampotabela: row.idcampotabela,
-    nomecampo: row.nomecampo,
-    rotulo: row.rotulo,
-    unidademedida: row.unidademedida,
-    ordem: row.ordem,
-    // Objeto aninhado para o Sensor
-    sensor: row.idsensor
-        ? {
-            idSensor: row.idsensor,
-            nome: row.nome_sensor,
-          }
-        : undefined,
-});
+// --- ENDPOINTS ---
 
-//  getAll
+/**
+ * Endpoint: getAll
+ * Busca dados paginados e filtrados.
+ */
 export const getAll = async (req: Request, res: Response): Promise<void> => {
-    try{
+    try {
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || PAGE_SIZE;
-        const offset = (page - 1) * limit;
 
-        // consulta com paginação
-        const result = await simaPool.query(
-            `
-            SELECT
-                a.idcampotabela,
-                a.idSensor AS idSensor, -- Alias idSensor para ser usado no mapeamento
-                b.nome AS nome_sensor,
-                a.nomecampo,
-                a.rotulo,
-                a.unidademedida,
-                a.ordem
-            FROM tbcampotabela a
-            LEFT JOIN tbsensor b ON a.idSensor = b.idSensor
-            ORDER BY a.nomecampo
-            LIMIT $1 OFFSET $2;
-            `,
-            [limit, offset],
-        );
+        // 1. Pede os dados paginados ao Model, passando os filtros
+        const { data: rawData, total } = await CampoTabelaModel.findPaginated({
+            filters: req.query, // O FilterService é aplicado dentro do Model
+            page,
+            limit,
+        });
 
-        // total de registros
-        const countResult = await simaPool.query("SELECT COUNT(*) FROM tbcampotabela");
-        const total = Number(countResult.rows[0].count);
+        // 2. Formata os dados "crus" usando o Service
+        //    (O map manual 'mapRowToCampoTabela' foi removido)
+        const data = rawData.map(DataFormatterService.formatListRow);
 
-        const data = result.rows.map(mapRowToCampoTabela);
-
-        res.status(200).json({success: true, page, limit, total, totalPages: Math.ceil(total / limit), data,});
-
-    } catch(error:any){
-        logger.error("Erro ao consultar tbcampotabela", {message: error.message, stack: error.stack,});
-
-        res.status(500).json({success: false, error: "Erro ao realizar operação.",});
+        // 3. Envia a resposta
+        res.status(200).json({
+            success: true,
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+            data,
+        });
+    } catch (error: any) {
+        logger.error("Erro ao consultar tbcampotabela", {
+            message: error.message,
+            stack: error.stack,
+        });
+        res.status(500).json({
+            success: false,
+            error: "Erro ao realizar operação.",
+        });
     }
 };
 
-// getById
+/**
+ * Endpoint: getById
+ * Busca um único registro por ID.
+ */
 export const getById = async (req: Request, res: Response): Promise<void> => {
-    try{
+    try {
         const idcampotabela = Number(req.params.idcampotabela);
-        if(isNaN(idcampotabela)){
 
-            res.status(400).json({success: false, error: `ID ${req.params.idcampotabela} inválido.`});
+        if (isNaN(idcampotabela)) {
+            res.status(400).json({
+                success: false,
+                error: `ID ${req.params.idcampotabela} inválido.`,
+            });
             return;
         }
 
-        const result = await simaPool.query(
-            `
-            SELECT
-                a.idcampotabela,
-                a.idSensor AS idSensor, -- Alias idSensor para ser usado no mapeamento
-                b.nome AS nome_sensor,
-                a.nomecampo,
-                a.rotulo,
-                a.unidademedida,
-                a.ordem
-            FROM tbcampotabela a
-            LEFT JOIN tbsensor b ON a.idSensor = b.idSensor
-            WHERE a.idcampotabela = $1;
-            `, [idcampotabela],
-        );
+        // 1. Pede o dado ao Model
+        const rawData = await CampoTabelaModel.findById(idcampotabela);
 
-        if(result.rows.length === 0){
-            res.status(404).json({success: false, error: "Registro de campo por tabela não encontrado.",});
+        // 2. Verifica se foi encontrado
+        if (!rawData) {
+            res.status(404).json({
+                success: false,
+                error: `Registro de campo por tabela não encontrado.`,
+            });
             return;
         }
 
-        const data = mapRowToCampoTabela(result.rows[0]);
+        // 3. Retorna os dados crus (conforme exemplo abioticoColuna)
+        //    (O map manual 'mapRowToCampoTabela' foi removido)
+        const data = rawData;
 
-        res.status(200).json({success: true, data,});
-
-    } catch (error:any){
+        // 4. Envia a resposta
+        res.status(200).json({
+            success: true,
+            data,
+        });
+    } catch (error: any) {
         logger.error(`Erro ao consultar registro por ID na tabela tbcampotabela: ${req.params.idcampotabela}`, {
-            message: error.message, stack: error.stack,});
+            message: error.message,
+            stack: error.stack,
+        });
+        res.status(500).json({
+            success: false,
+            error: "Erro ao realizar operação.",
+        });
+    }
+};
 
-        res.status(500).json({success: false, error:"Erro ao realizar operação.",});
+/**
+ * Endpoint: exportData
+ * Exporta dados para CSV ou XLSX, com base nos filtros.
+ * (Adicionado com base no exemplo abioticoColuna)
+ */
+export const exportData = async (req: Request, res: Response): Promise<void> => {
+    try {
+        // 1. Extrai opções do body
+        const { format, range, includeHeaders, delimiter, encoding, filters, page, limit } =
+            req.body as ExportFileOptions & {
+                range: "page" | "all";
+                filters: any;
+                page?: number;
+                limit?: number;
+            };
+
+        // Opções para o ExportService
+        const exportOptions: ExportFileOptions = {
+            format,
+            includeHeaders,
+            delimiter,
+            encoding,
+        };
+
+        let rawData: any[];
+
+        // 2. Busca os dados no Model com base no 'range'
+        if (range === "page") {
+            const { data } = await CampoTabelaModel.findPaginated({
+                filters: filters || {},
+                page: page || 1,
+                limit: limit || PAGE_SIZE,
+            });
+            rawData = data;
+        } else {
+            // range === 'all'
+            rawData = await CampoTabelaModel.findAll({
+                filters: filters || {},
+            });
+        }
+
+        // 3. Formata os dados para "lista"
+        const formattedData = rawData.map(DataFormatterService.formatListRow);
+
+        // 4. Gera o buffer do arquivo
+        const fileBuffer = await ExportService.generateExportFile(formattedData, exportOptions);
+
+        // 5. Define os headers da resposta
+        const fileName = `export_campo_tabela_${new Date().toISOString().slice(0, 10)}.${format}`;
+
+        if (format === "xlsx") {
+            res.setHeader(
+                "Content-Type",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            );
+        } else {
+            res.setHeader("Content-Type", "text/csv; charset=" + (encoding || "utf-8"));
+        }
+        res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+
+        // 6. Envia o buffer como resposta
+        res.send(fileBuffer);
+    } catch (error: any) {
+        logger.error("Erro ao exportar dados de tbcampotabela", {
+            message: error.message,
+            stack: error.stack,
+        });
+        res.status(500).json({
+            success: false,
+            error: "Erro ao gerar exportação.",
+        });
     }
 };
