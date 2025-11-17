@@ -30,7 +30,7 @@ const colors = {
   white: "#FFFFFF",
 };
 
-// --- Interfaces e Funções Úteis ---
+// --- Interfaces e Funções Úteis (Mantidas) ---
 
 interface ImageMap {
   [key: string]: string;
@@ -96,7 +96,7 @@ const formatNameForImageKey = (name: string): string => {
   return formattedName;
 };
 
-// --- Interfaces de Dados ---
+// --- Interfaces de Dados (Mantidas) ---
 
 interface ApiResponse<T> {
   success: boolean;
@@ -290,7 +290,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   );
 };
 
-// --- Configurações do Leaflet ---
+// --- Configurações do Leaflet (Mantidas) ---
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 delete (L.Icon.Default.prototype as any)._getIconUrl;

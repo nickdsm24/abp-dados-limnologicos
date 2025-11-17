@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom"; // ✅ Import atualizado
+import { useNavigate, useLocation } from "react-router-dom"; // ✅ Import atualizado
 
 const FurnasInfo: React.FC = () => {
   const navigate = useNavigate();
