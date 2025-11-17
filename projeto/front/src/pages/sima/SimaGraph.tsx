@@ -14,7 +14,6 @@ import {
     type ChartData,
     type ChartOptions,
     // Adicione Scale para eixos dinâmicos
-    Scale,
 } from "chart.js";
 
 // --- Registro de Componentes do Chart.js ---

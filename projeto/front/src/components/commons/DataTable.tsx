@@ -1,4 +1,5 @@
 // src/components/commons/DataTable.tsx 
+import { useMemo } from 'react'; // Importa o useMemo
 import { Loader2, AlertCircle, Table2 } from 'lucide-react';
 import type { 
   DataType, 
@@ -6,8 +7,43 @@ import type {
   DatabaseName 
 } from '../../types/types'; // Ajuste o caminho
 
+// --- Definições dos Temas ---
+// Objeto que armazena as classes do Tailwind para cada tema
+const themes = {
+  furnas: {
+    headerBg: 'bg-[#1777af]',
+    rowEven: 'even:bg-blue-50', // Tom de azul bem claro
+    rowHover: 'hover:bg-blue-100',
+    loader: 'text-[#1777af]',
+    paginationBg: 'bg-[#1777af]',
+    paginationBgHover: 'hover:bg-[#136190]', // Azul mais escuro (do MenuBar)
+    paginationText: 'text-white',
+  },
+  balcar: {
+    headerBg: 'bg-[#006666]',
+    rowEven: 'even:bg-teal-50', // 'teal' é um bom análogo para este verde
+    rowHover: 'hover:bg-teal-100',
+    loader: 'text-[#006666]',
+    paginationBg: 'bg-[#006666]',
+    paginationBgHover: 'hover:bg-[#005555]', // Verde mais escuro (do MenuBar)
+    paginationText: 'text-white',
+  },
+  sima: {
+    headerBg: 'bg-[#2c2c2c]',
+    rowEven: 'even:bg-gray-100', // Cinza claro padrão
+    rowHover: 'hover:bg-gray-200',
+    loader: 'text-[#2c2c2c]',
+    paginationBg: 'bg-[#2c2c2c]',
+    paginationBgHover: 'hover:bg-[#444444]', // Cinza mais escuro (do MenuBar)
+    paginationText: 'text-white',
+  }
+};
+
+// Tipo para garantir que o 'database' é uma chave válida dos temas
+type ThemeName = keyof typeof themes;
+
 interface DataTableProps {
-  database: DatabaseName;
+  database: DatabaseName; // Esta prop será usada como a 'ThemeName'
   tableName: string;
   dados: DataType;
   colunas: string[];
@@ -18,6 +54,7 @@ interface DataTableProps {
 }
 
 export default function DataTable({
+  database, // Usaremos esta prop para selecionar o tema
   tableName,
   dados,
   colunas,
@@ -27,20 +64,30 @@ export default function DataTable({
   onPageChange
 }: DataTableProps) {
 
-  // --- Estados de Feedback (Estilizados) ---
+  // Seleciona o tema correto usando useMemo.
+  // Ele só será recalculado se a prop 'database' mudar.
+  const theme = useMemo(() => {
+    // Garante que o 'database' é um nome de tema válido, senão usa 'furnas'
+    const themeName = database as ThemeName;
+    return themes[themeName] || themes.furnas;
+  }, [database]);
+
+
+  // --- Estados de Feedback (Estilizados com o Tema) ---
 
   if (loading) {
     return (
       <div className="p-4">
         <div className="flex flex-col items-center justify-center h-80 bg-white rounded-xl shadow-lg border border-gray-200">
-          {/* Cor do ícone atualizada para o tema "mar" */}
-          <Loader2 className="animate-spin text-cyan-600" size={40} />
+          {/* Cor do ícone agora é dinâmica */}
+          <Loader2 className={`animate-spin ${theme.loader}`} size={40} />
           <p className="mt-3 text-lg font-medium text-gray-700">Carregando dados...</p>
         </div>
       </div>
     );
   }
 
+  // Erros devem ser sempre vermelhos, independente do tema
   if (error) {
     return (
       <div className="p-4">
@@ -53,6 +100,7 @@ export default function DataTable({
     );
   }
 
+  // Estado vazio é neutro, não precisa de tema
   if (!dados || dados.length === 0) {
     return (
       <div className="p-4">
@@ -65,16 +113,15 @@ export default function DataTable({
     );
   }
 
-  // --- Renderização da Tabela (Estilizada) ---
+  // --- Renderização da Tabela (Estilizada com o Tema) ---
   return (
     <div className="p-4">
-      {/* 1. Wrapper com cantos arredondados e overflow hidden */}
       <div className="overflow-hidden bg-white rounded-xl shadow-lg border border-gray-200">
         <div className="overflow-x-auto">
           <table className="min-w-full">
             
-            {/* 2. Cabeçalho azul-mar com texto branco */}
-            <thead className="bg-cyan-700">
+            {/* 2. Cabeçalho com cor dinâmica do tema */}
+            <thead className={theme.headerBg}>
               <tr>
                 {colunas.map((coluna) => (
                   <th
@@ -88,17 +135,23 @@ export default function DataTable({
               </tr>
             </thead>
 
-            {/* 3. Corpo com linhas "zebra" (cor sim, cor não) */}
+            {/* 3. Corpo com linhas "zebra" dinâmicas */}
             <tbody className="bg-white">
               {dados.map((row, rowIndex) => (
                 <tr 
                   key={rowIndex} 
-                  className="odd:bg-white even:bg-sky-50 hover:bg-sky-100 transition-colors duration-150"
+                  // Linhas zebradas e hover dinâmicos + borda movida para o TR
+                  className={`
+                    odd:bg-white ${theme.rowEven} ${theme.rowHover} 
+                    transition-colors duration-150 
+                    border-t border-gray-200 first:border-t-0
+                  `}
                 >
                   {colunas.map((coluna) => (
                     <td 
                       key={`${rowIndex}-${coluna}`} 
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 border-t border-gray-200"
+                      // Borda removida do TD (agora está no TR)
+                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-800"
                     >
                       {String(row[coluna] ?? '')}
                     </td>
@@ -110,23 +163,32 @@ export default function DataTable({
         </div>
       </div>
 
-      {/* 4. Paginação com cantos arredondados */}
+      {/* 4. Paginação (passando o tema para o sub-componente) */}
       <Pagination 
         paginacao={paginacao}
         onPageChange={onPageChange}
+        theme={theme} // Passa o objeto do tema
       />
     </div>
   );
 }
 
-// --- Componente de Paginação (Estilizado) ---
+// --- Componente de Paginação (Estilizado com o Tema) ---
+
+// Define o tipo do 'theme' que a paginação espera
+type PaginationTheme = {
+  paginationBg: string;
+  paginationBgHover: string;
+  paginationText: string;
+};
 
 interface PaginationProps {
   paginacao: PaginacaoState;
   onPageChange: (newPage: number) => void;
+  theme: PaginationTheme; // Recebe o tema
 }
 
-function Pagination({ paginacao, onPageChange }: PaginationProps) {
+function Pagination({ paginacao, onPageChange, theme }: PaginationProps) {
   const { page, totalPages, total } = paginacao;
 
   const handlePrevious = () => {
@@ -152,10 +214,13 @@ function Pagination({ paginacao, onPageChange }: PaginationProps) {
         <button
           onClick={handlePrevious}
           disabled={page === 1}
-          className="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-lg bg-white 
-                     hover:bg-gray-50 
-                     disabled:opacity-50 disabled:bg-gray-50 disabled:cursor-not-allowed
-                     transition-colors"
+          // Botões agora usam as cores do tema!
+          className={`
+            px-3 py-1.5 text-sm font-medium rounded-lg 
+            ${theme.paginationBg} ${theme.paginationText} ${theme.paginationBgHover}
+            disabled:opacity-50 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed
+            transition-colors
+          `}
         >
           Anterior
         </button>
@@ -165,10 +230,13 @@ function Pagination({ paginacao, onPageChange }: PaginationProps) {
         <button
           onClick={handleNext}
           disabled={page === totalPages}
-          className="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-lg bg-white 
-                     hover:bg-gray-50 
-                     disabled:opacity-50 disabled:bg-gray-50 disabled:cursor-not-allowed
-                     transition-colors"
+          // Botões agora usam as cores do tema!
+          className={`
+            px-3 py-1.5 text-sm font-medium rounded-lg 
+            ${theme.paginationBg} ${theme.paginationText} ${theme.paginationBgHover}
+            disabled:opacity-50 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed
+            transition-colors
+          `}
         >
           Próxima
         </button>

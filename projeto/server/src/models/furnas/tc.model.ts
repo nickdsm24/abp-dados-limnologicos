@@ -1,46 +1,49 @@
-import { furnasPool } from '../configs/db';
-import { FilterService } from '../services/filterService';
+import { furnasPool } from '../../configs/db';
+import { FilterService } from '../../services/filterService';
 
-// Mapeia as chaves do frontend (filtros) para as colunas reais do banco de dados.
-const camaraSoloColumnMap = {
-    // Chaves de Range (type: 'number' ou 'date')
-    idCamaraSolo: 'a.idCamaraSolo',
+// Mapeia as chaves do frontend (ex: req.query) para as colunas reais
+// do banco de dados (com seus aliases).
+const tbtcColumnMap = {
+    // Chaves de Range (number, date)
+    idtc: 'a.idtc',
     dataMedida: 'a.dataMedida',
-    ch4: 'a.ch4',
-    co2: 'a.co2',
-    n2o: 'a.n2o',
-    tempar: 'a.tempar',
-    tempsolo: 'a.tempsolo',
-    vento: 'a.vento',
-    altitude: 'a.altitude',
+    profundidade: 'a.profundidade',
+    tc: 'a.tc',
 
-    // Chaves de Igualdade (type: 'string')
-    sitio: 'c.nome',
-    campanha: 'b.nroCampanha',
-    horaMedida: 'a.horaMedida',
+    // Chaves de Igualdade (string)
+    // O frontend pode enviar { sitio: 'Ponto 1' } ou { campanha: 'NROCAMPANHA' }
+    sitio: 'c.nome', // Mapeia a chave 'sitio' para 'c.nome'
+    campanha: 'b.nroCampanha', // Mapeia 'campanha' para 'b.nroCampanha'
 };
 
 /**
  * Constrói a query de listagem e contagem dinamicamente, aplicando filtros.
  * @param filters Um objeto (ex: req.query) com os filtros.
  */
-const buildCamaraSoloQuery = (filters: any) => {
-    // Query base para selecionar os dados (baseado no getAll original)
+const buildTbtcQuery = (filters: any) => {
+    // Query base para selecionar os dados
+    // Inclui aliases (sitio_nome, etc.) para o DataFormatterService
     const baseQuery = `
-        SELECT
-            a.idCamaraSolo, a.dataMedida, a.horaMedida, a.ch4, a.co2, a.n2o,
-            a.tempar, a.tempsolo, a.vento, a.altitude,
-            b.idCampanha, b.nroCampanha,
-            c.idSitio, c.nome AS sitio_nome, c.lat AS sitio_lat, c.lng AS sitio_lng
-        FROM tbcamarasolo AS a
+        SELECT 
+            a.idtc,
+            a.dataMedida,
+            a.profundidade,
+            a.tc,
+            b.idCampanha,
+            b.nroCampanha,
+            c.idSitio,
+            c.nome AS sitio_nome,
+            c.lat AS sitio_lat,
+            c.lng AS sitio_lng
+        FROM tbtc AS a
         LEFT JOIN tbcampanha AS b ON a.idCampanha = b.idCampanha
         LEFT JOIN tbsitio AS c ON a.idSitio = c.idSitio
     `;
 
-    // Query base para contagem (deve ter os mesmos JOINs para filtros)
+    // Query base para contagem (com os mesmos joins e filtros)
     const countQuery = `
-        SELECT COUNT(a.idCamaraSolo)
-        FROM tbcamarasolo AS a
+        SELECT COUNT(a.idtc)
+        FROM tbtc AS a
         LEFT JOIN tbcampanha AS b ON a.idCampanha = b.idCampanha
         LEFT JOIN tbsitio AS c ON a.idSitio = c.idSitio
     `;
@@ -48,7 +51,7 @@ const buildCamaraSoloQuery = (filters: any) => {
     // Usa o FilterService para construir a cláusula WHERE
     const { whereClause, params, nextIndex } = FilterService.buildFilter(
         filters,
-        camaraSoloColumnMap,
+        tbtcColumnMap,
         1, // Começa a contagem de parâmetros em $1
     );
 
@@ -56,8 +59,8 @@ const buildCamaraSoloQuery = (filters: any) => {
     const values = params;
     const paramIndex = nextIndex;
 
-    // Query principal com ordenação (do getAll original)
-    const mainQuery = `${baseQuery} ${whereString} ORDER BY a.dataMedida DESC, a.horaMedida DESC`;
+    // Query principal com ordenação (conforme controller original)
+    const mainQuery = `${baseQuery} ${whereString} ORDER BY a.dataMedida`;
     // Query de contagem (sem ordenação)
     const countText = `${countQuery} ${whereString}`;
 
@@ -65,11 +68,12 @@ const buildCamaraSoloQuery = (filters: any) => {
 };
 
 /**
- * Classe Model para encapsular o acesso a dados da tbcamarasolo.
+ * Classe Model para encapsular o acesso a dados da tbtc.
  */
-export class CamaraSoloModel {
+export class TbtcModel {
     /**
      * Busca uma lista paginada de registros, aplicando filtros.
+     * Retorna tanto os dados da página quanto a contagem total de registros.
      */
     public static async findPaginated(options: {
         filters: any;
@@ -81,7 +85,7 @@ export class CamaraSoloModel {
 
         // 1. Constrói a query base com filtros
         const { mainQuery, countText, values, paramIndex } =
-            buildCamaraSoloQuery(filters);
+            buildTbtcQuery(filters);
 
         // 2. Adiciona paginação à query
         const paginatedQuery = `${mainQuery} LIMIT $${paramIndex} OFFSET $${
@@ -90,9 +94,10 @@ export class CamaraSoloModel {
         const paginatedValues = [...values, limit, offset];
 
         // 3. Executa a query de dados e a de contagem em paralelo
+        //    (Usa a contagem com filtros, corrigindo o COUNT(*) do controller antigo)
         const [result, countResult] = await Promise.all([
             furnasPool.query(paginatedQuery, paginatedValues),
-            furnasPool.query(countText, values), // Contagem total com filtros
+            furnasPool.query(countText, values),
         ]);
 
         const total = Number(countResult.rows[0].count);
@@ -109,7 +114,7 @@ export class CamaraSoloModel {
         const { filters } = options;
         
         // 1. Constrói a query base (ignora contagem e paginação)
-        const { mainQuery, values } = buildCamaraSoloQuery(filters);
+        const { mainQuery, values } = buildTbtcQuery(filters);
         
         // 2. Executa a query
         const result = await furnasPool.query(mainQuery, values);
@@ -119,24 +124,31 @@ export class CamaraSoloModel {
     }
 
     /**
-     * Busca um único registro pelo ID, com os joins necessários
-     * para a visualização de detalhe.
+     * Busca um único registro pelo ID, com todos os joins necessários
+     * para a visualização de detalhe (seguindo o padrão do abiotico.model.ts).
      */
     public static async findById(id: number): Promise<any | null> {
-        // Query baseada no getById original
+        // Esta query é mais rica, seguindo o padrão do findById do abioticoColuna
         const result = await furnasPool.query(
             `
-            SELECT
-                a.idCamaraSolo, a.dataMedida, a.horaMedida, a.ch4, a.co2, a.n2o,
-                a.tempar, a.tempsolo, a.vento, a.altitude,
-                b.idCampanha, b.nroCampanha,
-                c.idSitio, c.nome AS sitio_nome, c.lat AS sitio_lat, c.lng AS sitio_lng
-            FROM tbcamarasolo AS a
-            LEFT JOIN tbcampanha AS b
-                ON a.idCampanha = b.idCampanha
-            LEFT JOIN tbsitio AS c
-                ON a.idSitio = c.idSitio
-            WHERE a.idCamaraSolo = $1
+            SELECT 
+                a.*, -- Campos principais do tbtc
+                b.idCampanha,
+                b.nroCampanha,
+                b.datainicio AS campanha_datainicio,
+                b.datafim AS campanha_datafim,
+                b.idreservatorio,
+                c.idSitio,
+                c.nome AS sitio_nome,
+                c.descricao AS sitio_descricao,
+                c.lat AS sitio_lat,
+                c.lng AS sitio_lng,
+                d.nome AS reservatorio_nome -- Join adicional para info completa
+            FROM tbtc AS a
+            LEFT JOIN tbcampanha AS b ON a.idCampanha = b.idCampanha
+            LEFT JOIN tbsitio AS c ON a.idSitio = c.idSitio
+            LEFT JOIN tbreservatorio AS d ON b.idreservatorio = d.idreservatorio
+            WHERE a.idtc = $1
             `,
             [id],
         );

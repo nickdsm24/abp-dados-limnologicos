@@ -1,252 +1,177 @@
-
 import { Request, Response } from "express";
-import { balcarPool } from "../../configs/db";
 import { logger } from "../../configs/logger";
+
+// 1. Importa os Serviços
+import { DataFormatterService } from "../../services/dataFormatterService";
+import { ExportService, ExportFileOptions } from "../../services/exportService";
+
+// 2. Importa o Model
+import { FluxoInpeModel } from "../../models/balcar/fluxoInpe.model";
 
 const PAGE_SIZE = Number(process.env.PAGE_SIZE) || 10;
 
+// --- ENDPOINTS ---
+
+/**
+ * Endpoint: getAll
+ * Busca dados paginados e filtrados.
+ */
 export const getAll = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || PAGE_SIZE;
-    const offset = (page - 1) * limit;
+    try {
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || PAGE_SIZE;
 
-    // consulta com left join em campanha e sítio
-    const result = await balcarPool.query(
-      `
-      SELECT 
-        a.idfluxoinpe,
-        a.datamedida,
-        a.ch4,
-        a.batimetria,
-        a.tempar,
-        a.tempcupula,
-        a.tempaguasubsuperficie,
-        a.tempaguameio,
-        a.tempaguafundo,
-        a.phsubsuperficie,
-        a.phmeio,
-        a.phfundo,
-        a.orpsubsuperficie,
-        a.orpmeio,
-        a.orpfundo,
-        a.condutividadesubsuperficie,
-        a.condutividademeio,
-        a.condutividadefundo,
-        a.odsubsuperficie,
-        a.odmeio,
-        a.odfundo,
-        a.tsdsubsuperficie,
-        a.tsdmeio,
-        a.tsdfundo,
-        b.idcampanha,
-        b.nrocampanha,
-        c.idsitio,
-        c.nome AS sitio_nome,
-        c.lat AS sitio_lat,
-        c.lng AS sitio_lng
-      FROM tbfluxoinpe AS a
-      LEFT JOIN tbcampanha AS b
-        ON a.idcampanha = b.idcampanha
-      LEFT JOIN tbsitio AS c
-        ON a.idsitio = c.idsitio
-      ORDER BY a.datamedida DESC, a.idfluxoinpe DESC
-      LIMIT $1 OFFSET $2
-      `,
-      [limit, offset],
-    );
+        // 1. Pede os dados paginados ao Model, passando os filtros
+        const { data: rawData, total } = await FluxoInpeModel.findPaginated({
+            filters: req.query, // O FilterService é aplicado dentro do Model
+            page,
+            limit,
+        });
 
-    // total de registros
-    const countResult = await balcarPool.query("SELECT COUNT(*) FROM tbfluxoinpe");
-    const total = Number(countResult.rows[0].count);
+        // 2. Formata os dados "crus" usando o Service
+        //    (O map manual foi substituído por este service global)
+        const data = rawData.map(DataFormatterService.formatListRow);
 
-    // resposta formatada
-    const data = result.rows.map((row: any) => ({
-      idfluxoinpe: row.idfluxoinpe,
-      campanha: row.idcampanha
-        ? {
-            idcampanha: row.idcampanha,
-            nrocampanha: row.nrocampanha,
-          }
-        : undefined,
-      sitio: row.idsitio
-        ? {
-            idsitio: row.idsitio,
-            nome: row.sitio_nome,
-            lat: row.sitio_lat,
-            lng: row.sitio_lng,
-          }
-        : undefined,
-      datamedida: row.datamedida,
-      ch4: row.ch4,
-      batimetria: row.batimetria,
-      tempar: row.tempar,
-      tempcupula: row.tempcupula,
-      tempaguasubsuperficie: row.tempaguasubsuperficie,
-      tempaguameio: row.tempaguameio,
-      tempaguafundo: row.tempaguafundo,
-      phsubsuperficie: row.phsubsuperficie,
-      phmeio: row.phmeio,
-      phfundo: row.phfundo,
-      orpsubsuperficie: row.orpsubsuperficie,
-      orpmeio: row.orpmeio,
-      orpfundo: row.orpfundo,
-      condutividadesubsuperficie: row.condutividadesubsuperficie,
-      condutividademeio: row.condutividademeio,
-      condutividadefundo: row.condutividadefundo,
-      odsubsuperficie: row.odsubsuperficie,
-      odmeio: row.odmeio,
-      odfundo: row.odfundo,
-      tsdsubsuperficie: row.tsdsubsuperficie,
-      tsdmeio: row.tsdmeio,
-      tsdfundo: row.tsdfundo,
-    }));
-
-    res.status(200).json({
-      success: true,
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-      data,
-    });
-  } catch (error: any) {
-    logger.error("Erro ao consultar tbfluxoinpe", {
-      message: error.message,
-      stack: error.stack,
-    });
-
-    res.status(500).json({
-      success: false,
-      error: "Erro ao realizar a operação.",
-    });
-  }
+        // 3. Envia a resposta
+        res.status(200).json({
+            success: true,
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+            data,
+        });
+    } catch (error: any) {
+        logger.error("Erro ao consultar tbfluxoinpe", {
+            message: error.message,
+            stack: error.stack,
+        });
+        res.status(500).json({
+            success: false,
+            error: "Erro ao realizar operação.",
+        });
+    }
 };
 
+/**
+ * Endpoint: getById
+ * Busca um único registro por ID.
+ */
 export const getById = async (req: Request, res: Response): Promise<void> => {
-  try {
-    // Captura o idfluxoinpe do parâmetro da URL
-    const id = Number(req.params.id);
+    try {
+        const id = Number(req.params.id); // O controller original usava 'id'
 
-    // Verifica se o ID é válido
-    if (isNaN(id)) {
-      res.status(400).json({
-        success: false,
-        error: "ID inválido",
-      });
-      return;
+        if (isNaN(id)) {
+            res.status(400).json({
+                success: false,
+                error: "ID inválido",
+            });
+            return;
+        }
+
+        // 1. Pede o dado ao Model
+        const rawData = await FluxoInpeModel.findById(id);
+
+        // 2. Verifica se foi encontrado
+        if (!rawData) {
+            res.status(404).json({
+                success: false,
+                error: "Registro não encontrado",
+            });
+            return;
+        }
+
+        // 3. Retorna os dados crus (conforme exemplos)
+        //    (A formatação manual complexa do controller original foi removida)
+        const data = rawData;
+
+        // 4. Envia a resposta
+        res.status(200).json({
+            success: true,
+            data,
+        });
+    } catch (error: any) {
+        logger.error("Erro ao consultar tbfluxoinpe por idfluxoinpe", {
+            message: error.message,
+            stack: error.stack,
+        });
+        res.status(500).json({
+            success: false,
+            error: "Erro ao realizar a operação.",
+        });
     }
+};
 
-    // Query para buscar um único registro com base no idfluxoinpe
-    const result = await balcarPool.query(
-      `
-      SELECT 
-        a.idfluxoinpe,
-        a.datamedida,
-        a.ch4,
-        a.batimetria,
-        a.tempar,
-        a.tempcupula,
-        a.tempaguasubsuperficie,
-        a.tempaguameio,
-        a.tempaguafundo,
-        a.phsubsuperficie,
-        a.phmeio,
-        a.phfundo,
-        a.orpsubsuperficie,
-        a.orpmeio,
-        a.orpfundo,
-        a.condutividadesubsuperficie,
-        a.condutividademeio,
-        a.condutividadefundo,
-        a.odsubsuperficie,
-        a.odmeio,
-        a.odfundo,
-        a.tsdsubsuperficie,
-        a.tsdmeio,
-        a.tsdfundo,
-        b.idcampanha,
-        b.nrocampanha,
-        c.idsitio,
-        c.nome AS sitio_nome,
-        c.lat AS sitio_lat,
-        c.lng AS sitio_lng
-      FROM tbfluxoinpe AS a
-      LEFT JOIN tbcampanha AS b ON a.idcampanha = b.idcampanha
-      LEFT JOIN tbsitio AS c ON a.idsitio = c.idsitio
-      WHERE a.idfluxoinpe = $1
-      `,
-      [id]
-    );
+/**
+ * Endpoint: exportData
+ * Exporta dados para CSV ou XLSX, com base nos filtros.
+ * (Adicionado com base no exemplo)
+ */
+export const exportData = async (req: Request, res: Response): Promise<void> => {
+    try {
+        // 1. Extrai opções do body
+        const { format, range, includeHeaders, delimiter, encoding, filters, page, limit } =
+            req.body as ExportFileOptions & {
+                range: "page" | "all";
+                filters: any;
+                page?: number;
+                limit?: number;
+            };
 
-    // Se não encontrar nenhum registro com o id
-    if (result.rows.length === 0) {
-      res.status(404).json({
-        success: false,
-        error: "Registro não encontrado",
-      });
-      return;
+        // Opções para o ExportService
+        const exportOptions: ExportFileOptions = {
+            format,
+            includeHeaders,
+            delimiter,
+            encoding,
+        };
+
+        let rawData: any[];
+
+        // 2. Busca os dados no Model com base no 'range'
+        if (range === "page") {
+            const { data } = await FluxoInpeModel.findPaginated({
+                filters: filters || {},
+                page: page || 1,
+                limit: limit || PAGE_SIZE,
+            });
+            rawData = data;
+        } else {
+            // range === 'all'
+            rawData = await FluxoInpeModel.findAll({
+                filters: filters || {},
+            });
+        }
+
+        // 3. Formata os dados para "lista"
+        const formattedData = rawData.map(DataFormatterService.formatListRow);
+
+        // 4. Gera o buffer do arquivo
+        const fileBuffer = await ExportService.generateExportFile(formattedData, exportOptions);
+
+        // 5. Define os headers da resposta
+        const fileName = `export_fluxo_inpe_${new Date().toISOString().slice(0, 10)}.${format}`;
+
+        if (format === "xlsx") {
+            res.setHeader(
+                "Content-Type",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            );
+        } else {
+            res.setHeader("Content-Type", "text/csv; charset=" + (encoding || "utf-8"));
+        }
+        res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+
+        // 6. Envia o buffer como resposta
+        res.send(fileBuffer);
+    } catch (error: any) {
+        logger.error("Erro ao exportar dados de tbfluxoinpe", {
+            message: error.message,
+            stack: error.stack,
+        });
+        res.status(500).json({
+            success: false,
+            error: "Erro ao gerar exportação.",
+        });
     }
-
-    // O primeiro (e único) registro encontrado
-    const row = result.rows[0];
-
-    const data = {
-      idfluxoinpe: row.idfluxoinpe,
-      campanha: row.idcampanha
-        ? {
-            idcampanha: row.idcampanha,
-            nrocampanha: row.nrocampanha,
-          }
-        : undefined,
-      sitio: row.idsitio
-        ? {
-            idsitio: row.idsitio,
-            nome: row.sitio_nome,
-            lat: row.sitio_lat,
-            lng: row.sitio_lng,
-          }
-        : undefined,
-      datamedida: row.datamedida,
-      ch4: row.ch4,
-      batimetria: row.batimetria,
-      tempar: row.tempar,
-      tempcupula: row.tempcupula,
-      tempaguasubsuperficie: row.tempaguasubsuperficie,
-      tempaguameio: row.tempaguameio,
-      tempaguafundo: row.tempaguafundo,
-      phsubsuperficie: row.phsubsuperficie,
-      phmeio: row.phmeio,
-      phfundo: row.phfundo,
-      orpsubsuperficie: row.orpsubsuperficie,
-      orpmeio: row.orpmeio,
-      orpfundo: row.orpfundo,
-      condutividadesubsuperficie: row.condutividadesubsuperficie,
-      condutividademeio: row.condutividademeio,
-      condutividadefundo: row.condutividadefundo,
-      odsubsuperficie: row.odsubsuperficie,
-      odmeio: row.odmeio,
-      odfundo: row.odfundo,
-      tsdsubsuperficie: row.tsdsubsuperficie,
-      tsdmeio: row.tsdmeio,
-      tsdfundo: row.tsdfundo,
-    };
-
-    // Retorna a resposta com o registro encontrado
-    res.status(200).json({
-      success: true,
-      data,
-    });
-  } catch (error: any) {
-    // Erro no processo de consulta
-    logger.error("Erro ao consultar tbfluxoinpe por idfluxoinpe", {
-      message: error.message,
-      stack: error.stack,
-    });
-
-    res.status(500).json({
-      success: false,
-      error: "Erro ao realizar a operação.",
-    });
-  }
 };

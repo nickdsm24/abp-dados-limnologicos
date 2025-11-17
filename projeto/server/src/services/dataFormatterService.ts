@@ -107,15 +107,39 @@ export class DataFormatterService {
     // 1. Começa com todos os campos do 'row' (IDs, e números já formatados)
     const formatted: any = { ...row };
 
-    // 2. Normaliza campos de data conhecidos
+    // 2. Normaliza campos de data conhecidos (snake_case)
     if (formatted.datamedida !== undefined) {
       formatted.datamedida = DataFormatterService.normalizeDate(formatted.datamedida);
     }
+    if (formatted.datahora !== undefined) {
+      formatted.datahora = DataFormatterService.normalizeDate(formatted.datahora);
+    }
+    if (formatted.datainicio !== undefined) {
+      formatted.datainicio = DataFormatterService.normalizeDate(formatted.datainicio);
+    }
+    if (formatted.datafim !== undefined) {
+      formatted.datafim = DataFormatterService.normalizeDate(formatted.datafim);
+    }
+    if (formatted.inicio !== undefined) {
+      formatted.inicio = DataFormatterService.normalizeDate(formatted.inicio);
+    }
+    if (formatted.fim !== undefined) {
+      formatted.fim = DataFormatterService.normalizeDate(formatted.inicio);
+    }
+
+    // (camelCase)
     if (formatted.dataMedida !== undefined) {
-      // Handle camelCase
       formatted.dataMedida = DataFormatterService.normalizeDate(formatted.dataMedida);
     }
-    // ... (adicionar outras colunas de data aqui se necessário)
+    if (formatted.dataHora !== undefined) {
+      formatted.dataHora = DataFormatterService.normalizeDate(formatted.dataHora);
+    }
+    if (formatted.dataInicio !== undefined) {
+      formatted.dataInicio = DataFormatterService.normalizeDate(formatted.dataInicio);
+    }
+    if (formatted.dataFim !== undefined) {
+      formatted.dataFim = DataFormatterService.normalizeDate(formatted.dataFim);
+    }
 
     // 3. "Achata" relacionamentos comuns
     // O Model DEVE fornecer 'sitio_nome' e 'nrocampanha'

@@ -36,7 +36,9 @@ export function Menu({ title, tabelas, tabelaAtiva, onSelectTabela, database }: 
 
   return (
     // 5. Cor de fundo atualizada para #2d3748
-    <aside className="w-64 bg-[#2d3748] text-white flex flex-col">
+    <aside className="w-64 text-white flex flex-col" style={{
+        background: "linear-gradient(to bottom, #2f2f2f, #3a3a3a, #4b4b4b)",
+      }}>
       {/* 6. Cabeçalho do Menu (Marca) agora é dinâmico */}
       <div className="flex items-center justify-center h-20 border-b border-white/20">
         {/* Ícone 'Zap' trocado por 'Database' */}

@@ -1,6 +1,6 @@
 // src/models/abioticoColuna.model.ts
-import { furnasPool } from '../configs/db';
-import { FilterService } from '../services/filterService';
+import { furnasPool } from '../../configs/db';
+import { FilterService } from '../../services/filterService';
 
 // Mapeia as chaves do frontend (vistas pelo useMemo)
 // para as colunas reais do banco de dados (com seus aliases).

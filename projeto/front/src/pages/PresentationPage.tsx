@@ -2,7 +2,7 @@ import React from 'react';
 import Header from '../components/Presentation/Header';
 import WelcomePanel from '../components/Presentation/WelcomePanel';
 import PresentationText from '../components/Presentation/PresentationText';
-import About from './About';
+import InfoText from '../components/Presentation/InfoText';
 import ActionButtons from '../components/Presentation/ActionButtons';
 
 
@@ -83,7 +83,7 @@ const Presentation: React.FC = () => {
           <WelcomePanel />
           <ActionButtons />
           <PresentationText />
-          <About />
+          <InfoText />
         </main>
       </div>
 

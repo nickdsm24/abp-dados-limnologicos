@@ -3,37 +3,30 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
-// Paleta de cores
+// Paleta de cores (Tema Furnas)
 const colors = {
-  // Cores Primárias/Secundárias para Ênfase e Marca (Tema "Furnas")
-  primary: "#1D4ED8", // Azul Escuro (Blue 800) - Para botões, seleção, títulos
-  secondary: "#3B82F6", // Azul Vibrante (Blue 500) - Para detalhes e ênfase secundária
-  white: "#FFFFFF", // Cor do texto em botões primários
-
-  // Cores da Sidebar (Tema Escuro - Neutro)
+  primary: "#1D4ED8", // Azul Escuro (Blue 800)
+  secondary: "#3B82F6", // Azul Vibrante (Blue 500)
+  white: "#FFFFFF",
   sidebarBg: "#1E293B", // Fundo Principal da Sidebar (Slate 800)
   sidebarBorder: "#334155", // Borda sutil e separadores (Slate 700)
   sidebarItem: "#334155", // Fundo de itens não selecionados (Slate 700)
   sidebarHover: "#475569", // Fundo de hover (Slate 600)
   sidebarText: "#F8FAFC", // Cor principal do texto (White/Slate 50)
   sidebarTextMuted: "#94A3B8", // Cor do texto secundário/muted (Slate 400)
-
-  // Cores do Mapa (UI Neutra)
   mapPopupBg: "#334155", // Fundo do Popup do mapa (Slate 700)
   mapPopupText: "#F8FAFC", // Texto do Popup do mapa (White/Slate 50)
-
-  // Cores dos Marcadores (Entidades)
   mapMarkerFurnas: "#1D4ED8", // Azul (Cor primária)
-  mapMarkerBalcar: "#047857", // Verde Esmeralda Escuro (Usado para "Sítio")
-  mapMarkerSima: "#C2410C", // Laranja Queimado (Orange 700)
+  mapMarkerBalcar: "#047857", // Verde Esmeralda (Usado para "Sítio")
 };
 
-// --- Interfaces e Tipos Furnas ---
+// --- Interfaces e Funções Úteis ---
 
 interface ImageMap {
   [key: string]: string;
 }
 
+// Imagens de reservatório (mantidas do seu código original)
 const reservatorioImages: ImageMap = {
   balbina: "/mapa/balbina.jpg",
   batalha: "/mapa/batalha.jpg",
@@ -66,250 +59,160 @@ const formatNameForImageKey = (name: string): string => {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/ /g, "-")
     .replace(/--/g, "-");
-
   const namesToMatch = [
-    "mascarenhas-de-moraes",
-    "serra-da-mesa",
-    "tres-marias",
-    "santo-antonio",
-    "belo-monte",
-    "porto-colombia",
+    "mascarenhas-de-moraes", "serra-da-mesa", "tres-marias", "santo-antonio", "belo-monte", "porto-colombia",
   ];
-
   for (const matchName of namesToMatch) {
-    if (formattedName.startsWith(matchName)) {
-      return matchName;
-    }
+    if (formattedName.startsWith(matchName)) return matchName;
   }
-
-  const baseMatch = formattedName.match(/^([a-z]+)/);
-  if (baseMatch && baseMatch[1]) {
-    return baseMatch[1];
-  }
-
   return formattedName;
 };
 
+// --- Interfaces de Dados (Adaptadas para API de Furnas) ---
+
+// Interface para os dados PUROS da API de Sítios
+interface ApiSitio {
+  sitio: string; // Este é o NOME do sítio
+  idreservatorio: number;
+  descricao: string;
+  reservatorio_nome: string;
+  reservatorio_lat: number;
+  reservatorio_lng: number;
+}
+
+// Interface PADRÃO para Reservatórios (igual ao Balcar)
 interface Reservatorio {
   idreservatorio: number;
   nome: string;
   lat: number | null;
   lng: number | null;
-  // Adicionando um campo de status simulado (se necessário)
-  status: "Aberto" | "Fechado";
 }
 
+// Interface PADRÃO para Sítios (adaptada para o que vamos usar na UI)
 interface Sitio {
-  idsitio: number;
-  nome: string;
-  lat: number | null;
-  lng: number | null;
+  nome: string; // <-- Mapeado de ApiSitio.sitio
+  lat: number | null; // <-- Mapeado de ApiSitio.reservatorio_lat
+  lng: number | null; // <-- Mapeado de ApiSitio.reservatorio_lng
+  idreservatorio: number;
   descricao: string;
-  reservatorio: {
-    idreservatorio: number;
-    nome: string;
-    lat: number;
-    lng: number;
-  };
-  // Adicionando um campo de status simulado (se necessário)
-  status: "Aberto" | "Fechado";
 }
 
 interface ApiResponse<T> {
   success: boolean;
   page: number;
   limit: number;
-  total: number;
   totalPages: number;
   data: T[];
 }
 
 // --- Tipos e Funções da Sidebar ---
 
-type TipoFiltroFurnas = "Todos" | "Reservatório" | "Sitio";
-type StatusFiltro = "Todos" | "Aberto" | "Fechado";
 type DataItem = (Reservatorio & { type: "reservatorio" }) | (Sitio & { type: "sitio" });
 
-// Usando mapMarkerFurnas para Reservatório (Azul) e mapMarkerBalcar para Sítio (Verde)
-const getIcon = (isReservatorio: boolean) => (isReservatorio ? "💧" : "⚙️"); // Sítio = Engrenagem/Instalação
+// Ícones de Furnas
+const getIcon = (isReservatorio: boolean) => (isReservatorio ? "💧" : "📍");
 
-// Customizando os backgrounds dos ícones para refletir a marca
+// Estilos de ícone de Furnas (Reservatório Azul, Sítio Verde)
 const getIconBgStyle = (isReservatorio: boolean) => ({
   backgroundColor: isReservatorio ? colors.mapMarkerFurnas : colors.mapMarkerBalcar,
-  color: "white", // Ícones brancos para contraste
+  color: colors.white,
 });
 
-// --- Componente: SidebarItem ---
+// --- Componente: SidebarItemFurnas (Lógica limpa do Balcar) ---
 
 const SidebarItemFurnas: React.FC<{
   item: DataItem;
-  onSelect: (id: string) => void;
+  onSelect: () => void;
   isSelected: boolean;
 }> = ({ item, onSelect, isSelected }) => {
   const isReservatorio = item.type === "reservatorio";
-  const idString = `${item.type}-${isReservatorio ? item.idreservatorio : item.idsitio}`;
-
-  // Usando um status simulado
-  const statusText = item.status === "Fechado" ? "Fechado" : "Aberto";
-  const statusColor = item.status === "Fechado" ? "text-red-400" : "text-green-400";
-
-  // Capacidade ou Simulação de Ocupação/Status
-  const capacidade = isReservatorio
-    ? Math.round(((item.idreservatorio * 17) % 100) * 0.9) + 1 // Simulação para reservatório
-    : Math.round(((item.idsitio * 13) % 100) * 0.9) + 1; // Simulação para sítio
-
-  const barColor =
-    capacidade > 70 ? "bg-green-500" : capacidade > 40 ? "bg-yellow-500" : "bg-red-500";
-
-  const infoText = isReservatorio
-    ? `Geradora de energia: ${item.nome}`
-    : `Localização ligada à: ${item.reservatorio.nome}`;
-  const horaText = isReservatorio
-    ? `Monitoramento contínuo`
-    : `Horário de visita/operação: 8h às 17h`;
-
   return (
     <div
-      className={`p-3 border rounded-lg cursor-pointer transition-colors shadow-sm
-        ${isSelected ? "border-2" : "border-gray-700 hover:bg-gray-700"}`}
+      className={`p-3 border rounded-lg cursor-pointer transition-colors shadow-sm relative flex items-center space-x-3`}
       style={{
         backgroundColor: isSelected ? colors.sidebarHover : colors.sidebarItem,
-        // Aplica a cor PRIMÁRIA (Azul) na borda do item selecionado
-        borderColor: isSelected ? colors.primary : colors.sidebarBorder,
+        borderColor: isSelected ? colors.primary : colors.sidebarBorder, // Borda Azul
+        borderStyle: "solid",
+        borderWidth: isSelected ? "2px" : "1px",
       }}
-      onClick={() => onSelect(idString)}
+      onClick={onSelect}
     >
-      <div className={`flex items-center space-x-3 mb-2`}>
-        <div
-          className={`p-2 rounded-full text-lg`}
-          style={getIconBgStyle(isReservatorio)} // Aplica a cor de fundo do ícone
-        >
-          {getIcon(isReservatorio)}
-        </div>
-        <div className="flex-1">
-          <h4 className="font-semibold" style={{ color: colors.sidebarText }}>
-            {item.nome}
-          </h4>
-        </div>
-        <span className={`text-xs font-medium ${statusColor}`}>{statusText}</span>
+      <div
+        className={`p-2 rounded-full text-lg flex-shrink-0 flex items-center justify-center`}
+        style={{
+          ...getIconBgStyle(isReservatorio),
+          width: "2.5rem",
+          height: "2.5rem",
+        }}
+      >
+        {getIcon(isReservatorio)}
       </div>
-
-      <p className="text-xs" style={{ color: colors.sidebarTextMuted }}>
-        {infoText}
-      </p>
-      <p className="text-xs" style={{ color: colors.sidebarTextMuted }}>
-        {horaText}
-      </p>
-
-      <div className="mt-2 text-xs" style={{ color: colors.sidebarText }}>
-        Nível / Ocupação (Simulado)
-        <div className="flex items-center space-x-2">
-          <div className="flex-1 w-full h-1 bg-gray-600 rounded-full">
-            <div
-              className={`h-1 rounded-full ${barColor}`}
-              style={{ width: `${capacidade}%` }}
-            ></div>
-          </div>
-          <span className="font-medium">{capacidade}%</span>
-        </div>
+      <div className="flex-1">
+        <h4 className="font-semibold" style={{ color: colors.sidebarText }}>
+          {item.nome}
+        </h4>
       </div>
     </div>
   );
 };
 
-// --- Componente: Sidebar ---
+// --- Componente: SidebarFurnas (Lógica limpa do Balcar) ---
 
 interface SidebarPropsFurnas {
-  tipoFiltro: TipoFiltroFurnas;
-  setTipoFiltro: (tipo: TipoFiltroFurnas) => void;
-  statusFiltro: StatusFiltro;
-  setStatusFiltro: (status: StatusFiltro) => void;
   searchText: string;
   setSearchText: (text: string) => void;
-  filteredItems: DataItem[];
-  totalReservatorios: number;
-  totalSitios: number;
-  selectedItemId: string | "all";
-  onSelectItem: (id: string) => void;
+  reservatorios: DataItem[];
+  sitios: DataItem[];
+  selectedReservatorioId: number | null;
+  isShowingSitios: boolean;
+  selectedSitioId: string | "all";
+  onReservatorioClick: (id: number) => void;
+  onShowSitios: () => void;
+  onCloseSitios: () => void;
+  onSitioClick: (id: string) => void;
 }
 
 const SidebarFurnas: React.FC<SidebarPropsFurnas> = ({
-  tipoFiltro,
-  setTipoFiltro,
-  statusFiltro,
-  setStatusFiltro,
   searchText,
   setSearchText,
-  filteredItems,
-  totalSitios,
-  totalReservatorios,
-  selectedItemId,
-  onSelectItem,
+  reservatorios,
+  sitios,
+  selectedReservatorioId,
+  isShowingSitios,
+  selectedSitioId,
+  onReservatorioClick,
+  onShowSitios,
+  onCloseSitios,
+  onSitioClick,
 }) => {
+  const totalCount = isShowingSitios ? sitios.length : reservatorios.length;
+  const title = isShowingSitios ? "Sítios" : "Reservatórios";
+  const placeholder = isShowingSitios ? "Buscar sítio..." : "Buscar reservatório...";
+
   return (
     <div
-      className="w-96 p-4 overflow-y-auto border-r border-gray-700 shadow-xl flex-shrink-0"
+      className="w-96 p-4 overflow-y-auto shadow-xl flex-shrink-0"
       style={{
         height: "100%",
         zIndex: 10,
         backgroundColor: colors.sidebarBg,
+        borderRight: `1px solid ${colors.sidebarBorder}`,
         color: colors.sidebarText,
       }}
     >
       <h2 className="text-xl font-bold mb-1" style={{ color: colors.sidebarText }}>
-        Localizações FURNAS
+        {title}
       </h2>
-      <p className="text-sm" style={{ color: colors.sidebarTextMuted }}>
-        {filteredItems.length} pontos encontrados
+      <p className="text-sm mb-4" style={{ color: colors.sidebarTextMuted }}>
+        {totalCount} {isShowingSitios ? "sítios encontrados" : "reservatórios encontrados"}
       </p>
 
-      <div className="flex justify-between space-x-3 mb-4">
-        <div
-          className="flex-1 p-3 rounded-lg border border-gray-700 flex items-center shadow-sm"
-          style={{ backgroundColor: colors.sidebarItem }}
-        >
-          {/* Aplica a cor FURNAS (Azul) nos ícones de resumo */}
-          <div
-            className={`p-2 rounded-full text-xl mr-2`}
-            style={{ backgroundColor: colors.mapMarkerFurnas, color: "white" }}
-          >
-            💧
-          </div>
-          <div>
-            <p className="text-sm" style={{ color: colors.sidebarTextMuted }}>
-              Reservatórios
-            </p>
-            <p className="text-xl font-bold" style={{ color: colors.sidebarText }}>
-              {totalReservatorios}
-            </p>
-          </div>
-        </div>
-        <div
-          className="flex-1 p-3 rounded-lg border border-gray-700 flex items-center shadow-sm"
-          style={{ backgroundColor: colors.sidebarItem }}
-        >
-          {/* Aplica a cor SÍTIO (Verde/Balcar) nos ícones de resumo */}
-          <div
-            className={`p-2 rounded-full text-xl mr-2`}
-            style={{ backgroundColor: colors.mapMarkerBalcar, color: "white" }}
-          >
-            ⚙️
-          </div>
-          <div>
-            <p className="text-sm" style={{ color: colors.sidebarTextMuted }}>
-              Sítios
-            </p>
-            <p className="text-xl font-bold" style={{ color: colors.sidebarText }}>
-              {totalSitios}
-            </p>
-          </div>
-        </div>
-      </div>
-
+      {/* Barra de Busca */}
       <div className="mb-4">
         <div className="relative">
           <svg
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4"
+            style={{ color: colors.sidebarTextMuted }}
             fill="none"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -321,91 +224,92 @@ const SidebarFurnas: React.FC<SidebarPropsFurnas> = ({
           </svg>
           <input
             type="text"
-            placeholder="Buscar por nome ou descrição..."
+            placeholder={placeholder}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-700 rounded-lg focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent text-sm"
+            className="w-full pl-10 pr-4 py-2 text-sm rounded-lg focus:ring-opacity-50"
             style={
               {
                 border: `1px solid ${colors.sidebarBorder}`,
-                backgroundColor: colors.sidebarItem, // Fundo do input
-                color: colors.sidebarText, // Texto digitado
-                "--tw-ring-color": colors.primary, // Foco Laranja
+                backgroundColor: colors.sidebarItem,
+                color: colors.sidebarText,
+                "--tw-ring-color": colors.primary, // Foco Azul
               } as React.CSSProperties
-            } // <-- CORREÇÃO 1: Corrige o erro de tipo da prop customizada
+            }
           />
         </div>
       </div>
 
-      <div className="mb-4">
-        <h3 className="font-semibold text-sm mb-2" style={{ color: colors.sidebarText }}>
-          Tipo
-        </h3>
-        <div
-          className="flex space-x-2 p-1 rounded-lg border border-gray-700"
-          style={{ backgroundColor: colors.sidebarItem }}
-        >
-          {(["Todos", "Reservatório", "Sitio"] as TipoFiltroFurnas[]).map((tipo) => (
-            <button
-              key={tipo}
-              onClick={() => setTipoFiltro(tipo)}
-              className={`flex-1 p-2 rounded-lg text-sm font-medium transition-all ${
-                tipoFiltro === tipo ? `text-white shadow-sm` : ""
-              }`}
-              style={{
-                backgroundColor: tipoFiltro === tipo ? colors.primary : colors.sidebarItem,
-                color: tipoFiltro === tipo ? "white" : colors.sidebarText,
-              }}
-            >
-              {tipo}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mb-6">
-        <h3 className="font-semibold text-sm mb-2" style={{ color: colors.sidebarText }}>
-          Status (Simulado)
-        </h3>
-        <div
-          className="flex space-x-2 p-1 rounded-lg border border-gray-700"
-          style={{ backgroundColor: colors.sidebarItem }}
-        >
-          {(["Todos", "Aberto", "Fechado"] as StatusFiltro[]).map((status) => (
-            <button
-              key={status}
-              onClick={() => setStatusFiltro(status)}
-              className={`flex-1 p-2 rounded-lg text-sm font-medium transition-all ${
-                statusFiltro === status ? `text-white shadow-sm` : ""
-              }`}
-              style={{
-                backgroundColor: statusFiltro === status ? colors.primary : colors.sidebarItem,
-                color: statusFiltro === status ? "white" : colors.sidebarText,
-              }}
-            >
-              {status}
-            </button>
-          ))}
-        </div>
-      </div>
-
+      {/* Lista de Itens */}
       <div className="space-y-3">
-        {filteredItems.length > 0 ? (
-          filteredItems.map((item) => (
-            <SidebarItemFurnas
-              key={`${item.type}-${item.type === "reservatorio" ? item.idreservatorio : item.idsitio}`}
-              item={item}
-              onSelect={onSelectItem}
-              isSelected={
-                selectedItemId ===
-                `${item.type}-${item.type === "reservatorio" ? item.idreservatorio : item.idsitio}`
-              }
-            />
-          ))
-        ) : (
+        {reservatorios.length === 0 && !isShowingSitios && (
           <p className="text-center p-8 text-sm" style={{ color: colors.sidebarTextMuted }}>
-            Nenhuma localização encontrada com os filtros e busca atuais.
+            Nenhum reservatório encontrado.
           </p>
+        )}
+
+        {isShowingSitios && (
+          <button
+            onClick={onCloseSitios}
+            className="w-full p-2 mb-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center space-x-2"
+            style={{ backgroundColor: colors.sidebarItem, color: colors.sidebarText }}
+          >
+            <span>&larr;</span>
+            <span>Voltar para Reservatórios</span>
+          </button>
+        )}
+
+        {isShowingSitios ? (
+          // --- MODO SÍTIOS ---
+          <div className="space-y-3">
+            {sitios.length > 0 ? (
+              sitios.map((item) => {
+                const sitio = item as Sitio & { type: "sitio" };
+                // Chave composta (idreservatorio + nome)
+                const uniqueKey = `sitio-${sitio.idreservatorio}-${sitio.nome}`;
+
+                return (
+                  <SidebarItemFurnas
+                    key={uniqueKey}
+                    item={item}
+                    onSelect={() => onSitioClick(uniqueKey)}
+                    isSelected={selectedSitioId === uniqueKey}
+                  />
+                );
+              })
+            ) : (
+              <p className="text-center p-8 text-sm" style={{ color: colors.sidebarTextMuted }}>
+                Nenhum sítio encontrado.
+              </p>
+            )}
+          </div>
+        ) : (
+          // --- MODO RESERVATÓRIOS ---
+          <div className="space-y-3">
+            {reservatorios.map((item) => {
+              const reservatorio = item as Reservatorio & { type: "reservatorio" };
+              const isSelected = reservatorio.idreservatorio === selectedReservatorioId;
+
+              return (
+                <div key={reservatorio.idreservatorio}>
+                  <SidebarItemFurnas
+                    item={reservatorio}
+                    onSelect={() => onReservatorioClick(reservatorio.idreservatorio)}
+                    isSelected={isSelected}
+                  />
+                  {isSelected && (
+                    <button
+                      onClick={onShowSitios}
+                      className="w-full mt-2 p-2 rounded-lg text-sm font-medium transition-all"
+                      style={{ backgroundColor: colors.primary, color: colors.white }} // Botão Azul
+                    >
+                      Ver Sítios &rarr;
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
@@ -430,50 +334,50 @@ const siteIconFurnas = new L.DivIcon({
   iconAnchor: [10, 10],
 });
 
-const INITIAL_CENTER: [number, number] = [-20.0, -47.0];
-const INITIAL_ZOOM = 6;
+const INITIAL_CENTER: [number, number] = [-14.235, -51.9253]; // Centro do Brasil
+const INITIAL_ZOOM = 4;
 
 // --- Componente Principal: FurnasMap ---
 
 const FurnasMap: React.FC = () => {
+  // --- Estados de Dados ---
   const [reservatorios, setReservatorios] = useState<Reservatorio[]>([]);
-  const [sitios, setSitios] = useState<Sitio[]>([]);
+  const [sitios, setSitios] = useState<Sitio[]>([]); // <- Usará a interface Sitio (UI)
   const [loading, setLoading] = useState(true);
 
-  // Estados da sidebar
-  const [tipoFiltro, setTipoFiltro] = useState<TipoFiltroFurnas>("Todos");
-  const [statusFiltro, setStatusFiltro] = useState<StatusFiltro>("Todos"); // Status simulado
+  // --- Estados de UI ---
   const [searchText, setSearchText] = useState("");
-  const [selectedItemId, setSelectedItemId] = useState<string | "all">("all");
+  const [selectedReservatorioId, setSelectedReservatorioId] = useState<number | null>(null);
+  const [isShowingSitios, setIsShowingSitios] = useState(false);
+  const [selectedSitioId, setSelectedSitioId] = useState<string | "all">("all");
 
-  // Efeito de busca de dados
+  // --- LÓGICA DE DADOS (Fetch e Transformação) ---
   useEffect(() => {
     const fetchData = async () => {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
       try {
         const [reservatoriosResponse, sitiosResponse] = await Promise.all([
-          fetch("http://localhost:3001/api/furnas/reservatorio/all?limit=10000"),
-          fetch("http://localhost:3001/api/furnas/sitio/all?limit=10000"),
+          fetch(`${API_BASE_URL}/api/furnas/reservatorio/all?limit=10000`),
+          fetch(`${API_BASE_URL}/api/furnas/sitio/all?limit=10000`),
         ]);
 
         const reservatoriosData: ApiResponse<Reservatorio> = await reservatoriosResponse.json();
-        const sitiosData: ApiResponse<Sitio> = await sitiosResponse.json();
+        const sitiosData: ApiResponse<ApiSitio> = await sitiosResponse.json(); // <-- Pega dados brutos
 
-        if (reservatoriosData.success && sitiosData.success) {
-          // Adicionando status simulado
-          const reservatoriosComStatus = (reservatoriosData.data || []).map((r, i) => ({
-            ...r,
-            status: i % 3 === 0 ? "Fechado" : ("Aberto" as "Aberto" | "Fechado"),
-          }));
-          const sitiosComStatus = (sitiosData.data || []).map((s, i) => ({
-            ...s,
-            status: i % 5 === 0 ? "Fechado" : ("Aberto" as "Aberto" | "Fechado"),
-          }));
+        setReservatorios(reservatoriosData.data || []);
 
-          setReservatorios(reservatoriosComStatus);
-          setSitios(sitiosComStatus);
-        } else {
-          console.error("Erro ao carregar dados da API:", reservatoriosData, sitiosData);
-        }
+        // *** ETAPA DE TRANSFORMAÇÃO ***
+        // Converte os dados da API de Sítios para o formato que a UI espera
+        const transformedSitios: Sitio[] = (sitiosData.data || []).map((apiSitio) => ({
+          nome: apiSitio.sitio, // Mapeia 'sitio' para 'nome'
+          lat: apiSitio.reservatorio_lat, // Mapeia 'reservatorio_lat' para 'lat'
+          lng: apiSitio.reservatorio_lng, // Mapeia 'reservatorio_lng' para 'lng'
+          idreservatorio: apiSitio.idreservatorio,
+          descricao: apiSitio.descricao,
+        }));
+        
+        setSitios(transformedSitios); // <-- Seta os dados transformados
+
       } catch (error) {
         console.error("Erro ao carregar dados:", error);
       } finally {
@@ -483,127 +387,202 @@ const FurnasMap: React.FC = () => {
     fetchData();
   }, []);
 
-  // Combina Reservatórios e Sítios para a lógica de filtro
-  const allData: DataItem[] = useMemo(() => {
-    const reservatorioItems: DataItem[] = reservatorios
-      .filter((r) => r.lat && r.lng)
-      .map((r) => ({ ...r, type: "reservatorio" }));
+  // --- Handlers de UI (Idênticos ao Balcar) ---
 
-    const sitioItems: DataItem[] = sitios
-      .filter((s) => s.lat && s.lng)
-      .map((s) => ({ ...s, type: "sitio" }));
+  const handleReservatorioClick = (id: number) => {
+    setSelectedReservatorioId(id);
+    setIsShowingSitios(false);
+    setSelectedSitioId("all");
+  };
 
-    return [...reservatorioItems, ...sitioItems];
-  }, [reservatorios, sitios]);
+  const handleShowSitiosClick = () => {
+    setIsShowingSitios(true);
+    setSearchText("");
+  };
 
-  // Lógica de filtragem
-  const filteredDataItems = useMemo(() => {
-    let list = allData;
+  const handleCloseSitiosClick = () => {
+    setIsShowingSitios(false);
+    setSelectedReservatorioId(null);
+    setSelectedSitioId("all");
+    setSearchText("");
+  };
 
-    // Filtrar por Tipo (Reservatório/Sitio)
-    list = list.filter((item) => {
-      if (tipoFiltro === "Reservatório") return item.type === "reservatorio";
-      if (tipoFiltro === "Sitio") return item.type === "sitio";
-      return true; // "Todos"
-    });
+  const handleSitioClick = (id: string) => {
+    setSelectedSitioId((prev) => (prev === id ? "all" : id));
+  };
 
-    // Filtrar por Status (Aberto/Fechado) - Usando o status simulado
-    list = list.filter((item) => {
-      if (statusFiltro === "Aberto") return item.status === "Aberto";
-      if (statusFiltro === "Fechado") return item.status === "Fechado";
-      return true; // "Todos"
-    });
+  // --- LÓGICA DE DADOS (Listas Memoizadas) ---
 
-    // Filtrar por Busca
+  const reservatorioNameMap: Record<number, string> = useMemo(() => {
+    return reservatorios.reduce(
+      (acc, res) => {
+        acc[res.idreservatorio] = res.nome;
+        return acc;
+      },
+      {} as Record<number, string>,
+    );
+  }, [reservatorios]);
+
+  // Lista base de reservatórios (com lat/lng)
+  const listaDeReservatoriosBase = useMemo(
+    () =>
+      reservatorios
+        .filter((r) => r.lat && r.lng)
+        .map((r) => ({ ...r, type: "reservatorio" as const })),
+    [reservatorios],
+  );
+
+  // Lista base de sítios (com lat/lng)
+  // Nota: O filtro lat/lng aqui agora filtra com base nas coordenadas do reservatório
+  const listaDeSitiosBase = useMemo(
+    () =>
+      sitios
+        .filter((s) => s.lat && s.lng) // Filtra sítios sem coordenadas de reservatório
+        .map((s) => ({ ...s, type: "sitio" as const })),
+    [sitios],
+  );
+
+  // --- LÓGICA DE RENDERIZAÇÃO (Listas Filtradas) ---
+
+  const reservatoriosParaSidebar = useMemo(() => {
+    if (isShowingSitios) return [];
+    if (!searchText) return listaDeReservatoriosBase;
+    const lowerCaseSearch = searchText.toLowerCase();
+    return listaDeReservatoriosBase.filter((item) =>
+      item.nome.toLowerCase().includes(lowerCaseSearch),
+    );
+  }, [listaDeReservatoriosBase, searchText, isShowingSitios]);
+
+  const sitiosParaSidebar = useMemo(() => {
+    if (!isShowingSitios || selectedReservatorioId === null) return [];
+
+    let baseList = listaDeSitiosBase.filter(
+      (s) => s.idreservatorio === selectedReservatorioId,
+    );
+
     if (searchText) {
       const lowerCaseSearch = searchText.toLowerCase();
-      list = list.filter(
+      baseList = baseList.filter(
         (item) =>
           item.nome.toLowerCase().includes(lowerCaseSearch) ||
-          (item.type === "sitio" && item.descricao.toLowerCase().includes(lowerCaseSearch)),
+          (item.descricao || "").toLowerCase().includes(lowerCaseSearch),
       );
     }
-    return list;
-  }, [allData, tipoFiltro, statusFiltro, searchText]);
+    return baseList;
+  }, [listaDeSitiosBase, isShowingSitios, selectedReservatorioId, searchText]);
 
-  // Filtro final (Aplica a seleção do item único)
-  const filteredMapItems = useMemo(() => {
-    if (selectedItemId === "all") {
-      return filteredDataItems;
+  // Lista de itens para o MAPA
+  const itemsParaMapa = useMemo(() => {
+    if (isShowingSitios) {
+      // --- Modo Sítios ---
+      const baseSitios = listaDeSitiosBase.filter(
+        (s) => s.idreservatorio === selectedReservatorioId,
+      );
+      if (selectedSitioId === "all") {
+        return baseSitios; // Mostra TODOS os sítios do reservatório
+      }
+      // Mostra apenas o sítio selecionado
+      return baseSitios.filter(
+        (s) => `sitio-${s.idreservatorio}-${s.nome}` === selectedSitioId,
+      );
+    } else {
+      // --- Modo Reservatórios ---
+      if (selectedReservatorioId === null) {
+        // Nenhum selecionado: mostra todos da sidebar
+        return reservatoriosParaSidebar;
+      } else {
+        // Um reservatório FOI selecionado: mostra APENAS ele
+        return reservatoriosParaSidebar.filter(
+          (r) => (r as Reservatorio).idreservatorio === selectedReservatorioId
+        );
+      }
     }
-    // Retorna APENAS o item selecionado, se ele estiver na lista base
-    const selected = filteredDataItems.filter((item) => {
-      const idString = `${item.type}-${item.type === "reservatorio" ? item.idreservatorio : item.idsitio}`;
-      return idString === selectedItemId;
-    });
-    return selected.length > 0 ? selected : filteredDataItems;
-  }, [selectedItemId, filteredDataItems]);
+  }, [
+    isShowingSitios,
+    selectedReservatorioId,
+    selectedSitioId,
+    listaDeSitiosBase,
+    reservatoriosParaSidebar,
+  ]);
 
-  // Separa os itens filtrados para o mapa
-  const filteredMapReservatorios = filteredMapItems.filter(
+  // --- Separa listas para os marcadores do mapa ---
+  const filteredMapReservatorios = itemsParaMapa.filter(
     (item) => item.type === "reservatorio",
   ) as Reservatorio[];
-  const filteredMapSitios = filteredMapItems.filter((item) => item.type === "sitio") as Sitio[];
+  const filteredMapSitios = itemsParaMapa.filter((item) => item.type === "sitio") as Sitio[];
 
-  // Contadores para o cabeçalho da Sidebar
-  const totalReservatorios = allData.filter((item) => item.type === "reservatorio").length;
-  const totalSitios = allData.filter((item) => item.type === "sitio").length;
-
-  // Lógica de centralização do mapa
+  // Configurações de zoom e centro do mapa
   const mapSettings = useMemo(() => {
-    if (selectedItemId !== "all") {
-      const [type, idStr] = selectedItemId.split("-");
-      const id = Number(idStr);
-
-      let item: Reservatorio | Sitio | undefined;
-      if (type === "reservatorio") {
-        item = reservatorios.find((r) => r.idreservatorio === id);
-      } else if (type === "sitio") {
-        item = sitios.find((s) => s.idsitio === id);
-      }
-
+    // 1. Zoom em um Sítio específico (prioridade máxima)
+    if (selectedSitioId !== "all") {
+      const item = sitios.find(
+        (s) => `sitio-${s.idreservatorio}-${s.nome}` === selectedSitioId,
+      );
       if (item && item.lat && item.lng) {
-        return {
-          center: [item.lat, item.lng] as [number, number],
-          zoom: 9, // Zoom mais próximo para item único
-        };
+        return { center: [item.lat, item.lng] as [number, number], zoom: 12 };
       }
     }
-    return {
-      center: INITIAL_CENTER,
-      zoom: INITIAL_ZOOM,
-    };
-  }, [selectedItemId, reservatorios, sitios]);
+    
+    // 2. Zoom no Reservatório ATIVO (seja selecionado ou mostrando sítios)
+    if (selectedReservatorioId !== null) {
+      const item = reservatorios.find((r) => r.idreservatorio === selectedReservatorioId);
+      if (item && item.lat && item.lng) {
+        return { center: [item.lat, item.lng] as [number, number], zoom: 9 };
+      }
+    }
+
+    // 3. Estado inicial (nenhum reservatório selecionado)
+    return { center: INITIAL_CENTER, zoom: INITIAL_ZOOM };
+  }, [selectedSitioId, selectedReservatorioId, reservatorios, sitios]);
+  // --- RENDER ---
+
+  const popupStyles = `
+  	.balcar-popup .leaflet-popup-content-wrapper {
+  	background-color: ${colors.mapPopupBg};
+  	color: ${colors.mapPopupText};
+  	border-radius: 8px;
+  	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  	}
+  	.balcar-popup .leaflet-popup-tip {
+  	background: ${colors.mapPopupBg};
+  	}
+  	.balcar-popup .leaflet-popup-close-button {
+  	color: ${colors.mapPopupText} !important;	
+  	opacity: 0.7;
+  	}
+  	.balcar-popup .leaflet-popup-close-button:hover {
+  	opacity: 1;
+  	}
+  `;
 
   if (loading) {
     return <div className="p-4 text-lg font-medium">Carregando mapa FURNAS... 🗺️</div>;
   }
 
   return (
-    // Layout flexível
     <div className="flex" style={{ height: "calc(100vh - 80px)" }}>
-      {/* Sidebar */}
+      <style>{popupStyles}</style>
+
       <SidebarFurnas
-        tipoFiltro={tipoFiltro}
-        setTipoFiltro={setTipoFiltro}
-        statusFiltro={statusFiltro}
-        setStatusFiltro={setStatusFiltro}
         searchText={searchText}
         setSearchText={setSearchText}
-        filteredItems={filteredDataItems} // Passa a lista base para mostrar todos os itens filtrados na Sidebar
-        totalSitios={totalSitios}
-        totalReservatorios={totalReservatorios}
-        selectedItemId={selectedItemId}
-        onSelectItem={setSelectedItemId} // Função para centralizar no mapa
+        reservatorios={reservatoriosParaSidebar}
+        sitios={sitiosParaSidebar}
+        selectedReservatorioId={selectedReservatorioId}
+        isShowingSitios={isShowingSitios}
+        selectedSitioId={selectedSitioId}
+        onReservatorioClick={handleReservatorioClick}
+        onShowSitios={handleShowSitiosClick}
+        onCloseSitios={handleCloseSitiosClick}
+        onSitioClick={handleSitioClick}
       />
 
-      {/* Container do Mapa (flex-1) */}
-      <div className="flex-1 p-4 overflow-hidden">
+      <div className="flex-1 p-4 overflow-hidden" style={{ backgroundColor: "#FFFFFF" }}>
         <h1 className="text-3xl font-bold mb-4" style={{ color: colors.primary }}>
           Mapa de Localizações - Projeto FURNAS
         </h1>
-
         <MapContainer
+          key={mapSettings.center.toString()}
           center={mapSettings.center}
           zoom={mapSettings.zoom}
           scrollWheelZoom={true}
@@ -624,7 +603,7 @@ const FurnasMap: React.FC = () => {
                 key={reservatorio.idreservatorio}
                 position={[reservatorio.lat, reservatorio.lng]}
               >
-                <Popup>
+                <Popup className="balcar-popup">
                   {imageSrc && (
                     <img
                       src={imageSrc}
@@ -642,39 +621,33 @@ const FurnasMap: React.FC = () => {
                   <h3 style={{ color: colors.mapMarkerFurnas }} className="font-bold text-lg">
                     Reservatório: {reservatorio.nome}
                   </h3>
-                  <p>
-                    <span className="font-semibold">ID:</span> {reservatorio.idreservatorio}
-                  </p>
+                  <p>ID: {reservatorio.idreservatorio}</p>
                   <p>Lat: {reservatorio.lat.toFixed(4)}</p>
                   <p>Lng: {reservatorio.lng.toFixed(4)}</p>
-                  <p>Status: {reservatorio.status}</p>
                 </Popup>
               </Marker>
             );
           })}
 
           {/* Marcadores de Sítios */}
-          {filteredMapSitios.map((sitio) =>
-            sitio.lat && sitio.lng ? (
-              <Marker key={sitio.idsitio} position={[sitio.lat, sitio.lng]} icon={siteIconFurnas}>
-                <Popup>
+          {filteredMapSitios.map((sitio) => {
+            const reservatorioNome =
+              reservatorioNameMap[sitio.idreservatorio] || "Desconhecido";
+            const markerKey = `sitio-${sitio.idreservatorio}-${sitio.nome}`;
+            return sitio.lat && sitio.lng ? (
+              // O ícone 'siteIconFurnas' será usado aqui
+              <Marker key={markerKey} position={[sitio.lat, sitio.lng]} icon={siteIconFurnas}>
+                <Popup className="balcar-popup">
                   <h3 style={{ color: colors.mapMarkerBalcar }} className="font-bold text-lg">
                     Sítio: {sitio.nome}
                   </h3>
-                  <p>
-                    <span className="font-semibold">ID:</span> {sitio.idsitio}
-                  </p>
-                  <p>
-                    <span className="font-semibold">Reservatório:</span> {sitio.reservatorio.nome}{" "}
-                    (ID: {sitio.reservatorio.idreservatorio})
-                  </p>
+                  <p>Reservatório: {reservatorioNome} (ID: {sitio.idreservatorio})</p>
                   <p>Lat: {sitio.lat.toFixed(4)}</p>
                   <p>Lng: {sitio.lng.toFixed(4)}</p>
-                  <p>Status: {sitio.status}</p>
                 </Popup>
               </Marker>
-            ) : null,
-          )}
+            ) : null;
+          })}
         </MapContainer>
       </div>
     </div>

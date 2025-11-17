@@ -1,49 +1,41 @@
-import { furnasPool } from '../configs/db';
-import { FilterService } from '../services/filterService';
+import { furnasPool } from '../../configs/db';
+import { FilterService } from '../../services/filterService';
 
-// Mapeia as chaves do frontend (filtros) para as colunas reais do banco de dados.
-const campoPorTabelaColumnMap = {
-    // Chaves de Range (type: 'number')
-    idCampoPorTabela: 'a.idCampoPorTabela',
-    ordem: 'a.ordem',
-    idTabela: 'a.idTabela', // Embora seja a FK, pode ser filtrado
+// Mapeia as chaves do frontend (ex: req.query) para as colunas reais
+// do banco de dados (com seus aliases).
+const reservatorioColumnMap = {
+    // Chaves de Range (number)
+    idreservatorio: 'a.idreservatorio',
+    lat: 'a.lat',
+    lng: 'a.lng',
 
-    // Chaves de Igualdade (type: 'string' ou 'boolean')
-    nome: 'a.nome',
-    rotulo: 'a.rotulo',
-    unidade: 'a.unidade',
-    principal: 'a.principal',
-    tipo: 'a.tipo',
-    tabela: 'b.nome',       // Filtra por 'b.nome'
-    tabela_rotulo: 'b.rotulo', // Filtra por 'b.rotulo'
+    // Chaves de Igualdade (string)
+    // O frontend pode enviar { nome: 'SERRA DA MESA' }
+    nome: 'a.nome', 
 };
 
 /**
  * Constrói a query de listagem e contagem dinamicamente, aplicando filtros.
  * @param filters Um objeto (ex: req.query) com os filtros.
  */
-const buildCampoPorTabelaQuery = (filters: any) => {
-    // Query base para selecionar os dados (baseado no getAll original)
+const buildReservatorioQuery = (filters: any) => {
+    // Query base para selecionar os dados
     const baseQuery = `
-        SELECT
-            a.idCampoPorTabela, a.nome, a.rotulo, a.unidade,
-            a.principal, a.ordem, a.tipo,
-            b.idTabela AS idtabela, b.nome AS tabela_nome, b.rotulo AS tabela_rotulo
-        FROM tbcampoportabela a
-        LEFT JOIN tbtabela b ON a.idTabela = b.idTabela
+        SELECT 
+            a.idreservatorio, a.nome, a.lat, a.lng
+        FROM tbreservatorio AS a
     `;
 
-    // Query base para contagem (DEVE ter os mesmos JOINs para filtros)
+    // Query base para contagem (para paginação)
     const countQuery = `
-        SELECT COUNT(a.idCampoPorTabela)
-        FROM tbcampoportabela a
-        LEFT JOIN tbtabela b ON a.idTabela = b.idTabela
+        SELECT COUNT(a.idreservatorio)
+        FROM tbreservatorio AS a
     `;
 
     // Usa o FilterService para construir a cláusula WHERE
     const { whereClause, params, nextIndex } = FilterService.buildFilter(
         filters,
-        campoPorTabelaColumnMap,
+        reservatorioColumnMap,
         1, // Começa a contagem de parâmetros em $1
     );
 
@@ -51,8 +43,8 @@ const buildCampoPorTabelaQuery = (filters: any) => {
     const values = params;
     const paramIndex = nextIndex;
 
-    // Query principal com ordenação (do getAll original)
-    const mainQuery = `${baseQuery} ${whereString} ORDER BY b.nome, a.ordem`;
+    // Query principal com ordenação (original ordenava por nome)
+    const mainQuery = `${baseQuery} ${whereString} ORDER BY a.nome`;
     // Query de contagem (sem ordenação)
     const countText = `${countQuery} ${whereString}`;
 
@@ -60,11 +52,12 @@ const buildCampoPorTabelaQuery = (filters: any) => {
 };
 
 /**
- * Classe Model para encapsular o acesso a dados da tbcampoportabela.
+ * Classe Model para encapsular o acesso a dados da tbreservatorio.
  */
-export class CampoPorTabelaModel {
+export class ReservatorioModel {
     /**
      * Busca uma lista paginada de registros, aplicando filtros.
+     * Retorna tanto os dados da página quanto a contagem total de registros.
      */
     public static async findPaginated(options: {
         filters: any;
@@ -76,7 +69,7 @@ export class CampoPorTabelaModel {
 
         // 1. Constrói a query base com filtros
         const { mainQuery, countText, values, paramIndex } =
-            buildCampoPorTabelaQuery(filters);
+            buildReservatorioQuery(filters);
 
         // 2. Adiciona paginação à query
         const paginatedQuery = `${mainQuery} LIMIT $${paramIndex} OFFSET $${
@@ -85,7 +78,6 @@ export class CampoPorTabelaModel {
         const paginatedValues = [...values, limit, offset];
 
         // 3. Executa a query de dados e a de contagem em paralelo
-        //    (Nota: A contagem agora usa os filtros, corrigindo o original)
         const [result, countResult] = await Promise.all([
             furnasPool.query(paginatedQuery, paginatedValues),
             furnasPool.query(countText, values), // Contagem total com filtros
@@ -105,7 +97,7 @@ export class CampoPorTabelaModel {
         const { filters } = options;
         
         // 1. Constrói a query base (ignora contagem e paginação)
-        const { mainQuery, values } = buildCampoPorTabelaQuery(filters);
+        const { mainQuery, values } = buildReservatorioQuery(filters);
         
         // 2. Executa a query
         const result = await furnasPool.query(mainQuery, values);
@@ -115,24 +107,19 @@ export class CampoPorTabelaModel {
     }
 
     /**
-     * Busca um único registro pelo ID, com os joins necessários
-     * para a visualização de detalhe.
+     * Busca um único registro pelo ID.
+     * (Query simples, baseada no controller original)
      */
     public static async findById(id: number): Promise<any | null> {
-        // Query baseada no getById original (mais completa, com a.*)
         const result = await furnasPool.query(
             `
             SELECT 
-                a.*,
-                b.idTabela AS idtabela,
-                b.nome AS tabela_nome,
-                b.rotulo AS tabela_rotulo,
-                b.excecao AS tabela_excecao,
-                b.sitio AS tabela_sitio,
-                b.campanha AS tabela_campanha
-            FROM tbcampoportabela a
-            LEFT JOIN tbtabela b ON a.idTabela = b.idTabela
-            WHERE a.idCampoPorTabela = $1;
+                idreservatorio,
+                nome,
+                lat,
+                lng
+            FROM tbreservatorio
+            WHERE idreservatorio = $1
             `,
             [id],
         );

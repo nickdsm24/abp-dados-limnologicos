@@ -1,4 +1,5 @@
 // src/pages/furnas/PageFurnasTable.tsx
+// src/pages/furnas/PageFurnasTable.tsx
 import { useState, useMemo } from "react";
 import { Menu } from "../../components/commons/TableMenu";
 import DataTable from "../../components/commons/DataTable";
@@ -69,16 +70,16 @@ export function FurnasTablePage() {
   const colunasDisponiveis = useMemo((): ColumnInfo[] => {
     /**
      * Helper que infere o tipo de uma coluna.
-     * Ele varre os dados para encontrar o primeiro valor não-nulo
-     * e usa o tipo desse valor.
      */
     const getColumnType = (coluna: string): ColumnType => {
-      // 1. Regras especiais por nome
       const lowerCol = coluna.toLowerCase();
+
+      // 1. Regras especiais por nome (Heurística)
       if (lowerCol.startsWith("data")) return "date";
       if (lowerCol.startsWith("hora")) return "time";
+      if (lowerCol.startsWith("descri")) return "string"; // Nova regra: descri... -> string
 
-      // 2. Inferência robusta baseada em dados
+      // 2. Inferência baseada em dados (Paginação atual)
       // Itera pelos dados até encontrar um valor não-nulo
       for (const row of dados) {
         const value = row[coluna];
@@ -91,9 +92,9 @@ export function FurnasTablePage() {
         }
       }
 
-      // 3. Se a coluna inteira for nula ou os dados estiverem vazios,
-      // assume 'string' como padrão seguro.
-      return "string";
+      // 3. Fallback final (Quando tudo for null)
+      // Se não for data, hora ou descrição, e for tudo null, assume que é numérico
+      return "number";
     };
 
     // Mapeia as colunas usando o helper robusto
@@ -103,7 +104,7 @@ export function FurnasTablePage() {
         type: getColumnType(coluna),
       };
     });
-  }, [colunas, dados]); // Depende de 'colunas' e 'dados'
+  }, [colunas, dados]); 
   //
   // *** FIM DA REFATORAÇÃO (useMemo) ***
   //
@@ -132,6 +133,7 @@ export function FurnasTablePage() {
         {tabelaAtiva ? (
           <>
             <FilterBar
+              database={"furnas"}
               tableName={tabelaAtiva}
               key={tabelaAtiva}
               onApplyFilters={setFilters}
@@ -173,4 +175,4 @@ export function FurnasTablePage() {
   );
 }
 
-export default FurnasTablePage;
+export default FurnasTablePage;   

@@ -5,7 +5,7 @@ import { logger } from "../../configs/logger";
 import { DataFormatterService } from "../../services/dataFormatterService";
 import { ExportService, ExportFileOptions } from "../../services/exportService";
 // 2. Importa o Model (sem mudança)
-import { AbioticoColunaModel } from "../../models/abioticoColuna.model";
+import { AbioticoColunaModel } from "../../models/furnas/abioticoColuna.model";
 
 const PAGE_SIZE = Number(process.env.PAGE_SIZE) || 10;
 

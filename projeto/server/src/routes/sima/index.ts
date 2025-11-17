@@ -1,4 +1,3 @@
-
 import express from "express";
 import sima from "./sima.routes";
 import simaOffline from './simaOffline.routes'
