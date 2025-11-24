@@ -168,3 +168,80 @@ export const exportData = async (req: Request, res: Response): Promise<void> => 
         });
     }
 };
+
+/**
+ * Endpoint: getStationsList
+ * Retorna lista simples de estações para preencher o <select>
+ */
+export const getStationsList = async (req: Request, res: Response): Promise<void> => {
+    try {
+        // 1. Chama o model
+        const stations = await SimaModel.findAllStations();
+
+        // 2. Retorna sucesso
+        res.status(200).json({
+            success: true,
+            total: stations.length,
+            data: stations
+        });
+    } catch (error: any) {
+        logger.error("Erro ao listar estações", {
+            message: error.message,
+            stack: error.stack,
+        });
+        res.status(500).json({
+            success: false,
+            error: "Erro ao buscar estações.",
+        });
+    }
+};
+
+
+/**
+ * Endpoint: getAnalytics
+ * Retorna dados agregados para gráficos (Time Series).
+ * Query Params: stationId, start, end, granularity
+ */
+export const getAnalytics = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { stationId, start, end, granularity } = req.query;
+
+        // 1. Validações Básicas
+        if (!stationId) {
+            res.status(400).json({ success: false, error: "Parâmetro 'stationId' é obrigatório." });
+            return;
+        }
+
+        if (!start || !end) {
+             res.status(400).json({ success: false, error: "Parâmetros 'start' e 'end' (datas) são obrigatórios." });
+             return;
+        }
+
+        // 2. Chama o Model de Agregação
+        const data = await SimaModel.getAnalyticsData({
+            stationId: stationId as string,
+            startDate: start as string,
+            endDate: end as string,
+            granularity: (granularity as 'hour' | 'day' | 'month') || 'day'
+        });
+
+        // 3. Retorna o JSON otimizado
+        res.status(200).json({
+            success: true,
+            granularity: granularity || 'day',
+            totalPoints: data.length,
+            data: data
+        });
+
+    } catch (error: any) {
+        logger.error("Erro ao gerar analytics do SIMA", {
+            message: error.message,
+            stack: error.stack,
+            query: req.query
+        });
+        res.status(500).json({
+            success: false,
+            error: "Erro ao processar dados analíticos.",
+        });
+    }
+};

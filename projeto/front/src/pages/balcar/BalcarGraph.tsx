@@ -1,515 +1,374 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Line } from "react-chartjs-2";
+import React, { useState, useEffect, useMemo} from "react";
+import { Bar } from "react-chartjs-2";
 import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    LineElement,
-    PointElement,
-    Title,
-    Tooltip,
-    Legend,
-    // Tipagem básica
-    type ChartData,
-    type ChartOptions,
-    // Adicione Scale para eixos dinâmicos
-    Scale,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  type ChartData,
+  type ChartOptions,
+  type ChartEvent,
+  type ActiveElement,
 } from "chart.js";
 
-// --- Registro de Componentes do Chart.js ---
+// --- Registro do Chart.js ---
 ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    LineElement,
-    PointElement,
-    Title,
-    Tooltip,
-    Legend
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
 );
 
-// --- Paleta de Cores e Estilos ---
-const colors = {
-    primary: "#C2410C", // Laranja Queimado (Cor Sima)
-    secondary: "#F97316", // Laranja Vibrante
-    sidebarBg: "#1E293B", // Fundo Principal da Sidebar (Slate 800)
-    sidebarText: "#F8FAFC", // Cor principal do texto (White/Slate 50)
-    sidebarBorder: "#334155", // Borda sutil e separadores (Slate 700)
+// --- Configurações de Estilo (Dark Theme Consistente) ---
+const THEME = {
+  primary: "#10B981", // Emerald 500
+  secondary: "#008000", // Blue 500
+  accent: "#F97316", // Orange 500 (Destaque)
+  bgCard: "#1E293B", // Slate 800
+  bgPage: "#0F172A", // Slate 900
+  textMain: "#F8FAFC", // Slate 50
+  textMuted: "#94A3B8", // Slate 400
+  border: "#334155", // Slate 700
 };
 
-// --- Mapeamento de Métricas Balcar ---
-const METRICS: {
-    [key: string]: { label: string; unit: string; color: string };
-} = {
-    // Métricas principais do Balcar (Fluxo INPE)
-    ch4: { label: "Metano (CH4)", unit: "ppm", color: "#F97316" }, // Laranja
-    tempar: { label: "Temperatura do Ar", unit: "°C", color: "#EF4444" }, // Vermelho
-    tempaguasubsuperficie: {
-        label: "Temp Água (Subsuperfície)",
-        unit: "°C",
-        color: "#3B82F6", // Azul
-    },
-    phsubsuperficie: {
-        label: "pH (Subsuperfície)",
-        unit: "pH",
-        color: "#10B981", // Verde
-    },
-    orpsubsuperficie: {
-        label: "ORP (Subsuperfície)",
-        unit: "mV",
-        color: "#8B5CF6", // Roxo
-    },
-    condutividadesubsuperficie: {
-        label: "Condutividade (Subsuperfície)",
-        unit: "mS/cm",
-        color: "#F59E0B", // Âmbar
-    },
-    odsubsuperficie: {
-        label: "Oxigênio Dissolvido (Subsuperfície)",
-        unit: "mg/L",
-        color: "#06B6D4", // Ciano
-    },
-    tsdsubsuperficie: {
-        label: "Sólidos Dissolvidos Totais (Subsuperfície)",
-        unit: "g/L",
-        color: "#EC4899", // Rosa
-    },
-    batimetria: { label: "Batimetria", unit: "m", color: "#6B7280" }, // Cinza
-    // Adicione mais se necessário
+// --- Mapeamento de Métricas ---
+const METRICS: { [key: string]: { label: string; unit: string } } = {
+  ch4: { label: "Metano (CH4)", unit: "ppm" },
+  tempar: { label: "Temperatura do Ar", unit: "°C" },
+  tempaguasubsuperficie: { label: "Temp. Água (Superfície)", unit: "°C" },
+  phsubsuperficie: { label: "pH", unit: "" },
+  condutividadesubsuperficie: { label: "Condutividade", unit: "mS/cm" },
+  odsubsuperficie: { label: "Oxigênio Dissolvido", unit: "mg/L" },
+  batimetria: { label: "Profundidade (Batimetria)", unit: "m" },
 };
 
-// --- Interfaces de Dados Balcar (Fluxo INPE) ---
-
-interface SitioAninhado {
-    idsitio: number;
-    nome: string; // Rótulo do Sítio
-    lat: number;
-    lng: number;
+// --- Interfaces ---
+interface AnalyticsItem {
+  id: number;
+  label: string;
+  media: number;
+  minimo: number;
+  maximo: number;
+  desvio_padrao: number;
+  contagem: number;
 }
 
-interface CampanhaAninhada {
-    idcampanha: number;
-    nrocampanha: number;
+interface AnalyticsResponse {
+  success: boolean;
+  data: AnalyticsItem[];
 }
-
-// Interface de Registro Balcar
-interface BalcarRegistro {
-    idfluxoinpe: number;
-    campanha: CampanhaAninhada;
-    sitio: SitioAninhado;
-    datamedida: string;
-    // Parâmetros a serem plotados
-    ch4: number | null;
-    batimetria: number | null;
-    tempar: number | null;
-    tempcupula: number | null;
-    tempaguasubsuperficie: number | null;
-    tempaguameio: number | null;
-    tempaguafundo: number | null;
-    phsubsuperficie: number | null;
-    phmeio: number | null;
-    phfundo: number | null;
-    orpsubsuperficie: number | null;
-    orpmeio: number | null;
-    orpfundo: number | null;
-    condutividadesubsuperficie: number | null;
-    condutividademeio: number | null;
-    condutividadefundo: number | null;
-    odsubsuperficie: number | null;
-    odmeio: number | null;
-    odfundo: number | null;
-    tsdsubsuperficie: number | null;
-    tsdmeio: number | null;
-    tsdfundo: number | null;
-    [key: string]: any; // Permite acesso dinâmico para os campos de medição
-}
-
-interface ApiResponse<T> {
-    success: boolean;
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    data: T[];
-}
-
-// --- Componente Principal: BalcarGraph ---
 
 const BalcarGraph: React.FC = () => {
-    const [balcarRegistros, setBalcarRegistros] = useState<BalcarRegistro[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    // Estado inicial com CH4 e Temp do Ar
-    const [selectedMetrics, setSelectedMetrics] = useState<string[]>([
-        "ch4",
-        "tempar",
-    ]);
+  // --- Estados de Controle ---
+  const [selectedMetric, setSelectedMetric] = useState<string>("ch4");
+  
+  // --- Estados de Dados (Master - Reservatórios) ---
+  const [reservoirData, setReservoirData] = useState<AnalyticsItem[]>([]);
+  const [loadingReservoirs, setLoadingReservoirs] = useState(false);
 
-    // Função para lidar com a seleção/desseleção de métricas
-    const handleMetricChange = useCallback((key: string) => {
-        setSelectedMetrics((prev) => {
-            if (prev.includes(key)) {
-                // *** ALTERAÇÃO AQUI: Permite desmarcar a última métrica ***
-                return prev.filter((k) => k !== key);
-            } else {
-                // Adiciona a nova métrica
-                return [...prev, key];
-            }
-        });
-    }, []);
+  // --- Estados de Dados (Detail - Sítios) ---
+  const [selectedReservoirId, setSelectedReservoirId] = useState<number | null>(null);
+  const [selectedReservoirName, setSelectedReservoirName] = useState<string>("");
+  const [siteData, setSiteData] = useState<AnalyticsItem[]>([]);
+  const [loadingSites, setLoadingSites] = useState(false);
 
-    // --- Busca de dados da API Balcar (Fluxo INPE) ---
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                // URL da API Balcar (Fluxo INPE)
-                const apiUrl =
-                    "http://localhost:3001/api/balcar/fluxo-inpe/all?limit=10000";
-                const balcarResponse = await fetch(apiUrl);
+  // --- 1. Busca Dados dos Reservatórios (Master) ---
+  useEffect(() => {
+    const fetchReservoirs = async () => {
+      setLoadingReservoirs(true);
+      // Ao mudar o filtro global, limpamos a seleção de detalhe
+      setSiteData([]);
+      setSelectedReservoirId(null);
+      setSelectedReservoirName("");
 
-                if (!balcarResponse.ok) {
-                    throw new Error(
-                        `Erro ${balcarResponse.status} ao carregar dados Balcar (Fluxo INPE).`
-                    );
-                }
-
-                const balcarData: ApiResponse<BalcarRegistro> =
-                    await balcarResponse.json();
-
-                if (balcarData.success) {
-                    const validRecords = balcarData.data
-                        .filter((r) => r.datamedida)
-                        .slice(0, 10000);
-                    setBalcarRegistros(validRecords);
-                } else {
-                    throw new Error("API retornou sucesso: false");
-                }
-            } catch (e) {
-                if (e instanceof Error) {
-                    setError(
-                        `Erro ao buscar dados: ${e.message}. Verifique se a API está rodando em http://localhost:3001.`
-                    );
-                } else {
-                    setError("Erro desconhecido ao buscar dados.");
-                }
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
-    }, []);
-
-    // --- Processamento dos dados para o Chart.js (Múltiplas Métricas) ---
-    const chartData = useMemo<ChartData<"line">>(() => {
-        // 1. Determinar todos os rótulos de Sítio (Eixo X)
-        const labels: string[] = Array.from(
-            new Set(balcarRegistros.map((r) => r.sitio.nome))
-        ).sort((a, b) => a.localeCompare(b));
-
-        // 2. Mapear dados de registro por rótulo de Sítio
-        const recordsBySite = new Map<string, BalcarRegistro[]>();
-        balcarRegistros.forEach((registro) => {
-            const rotulo = registro.sitio.nome;
-            if (!recordsBySite.has(rotulo)) {
-                recordsBySite.set(rotulo, []);
-            }
-            recordsBySite.get(rotulo)!.push(registro);
+      try {
+        const params = new URLSearchParams({
+          metric: selectedMetric,
+          groupBy: "reservatorio",
         });
 
-        // 3. Calcular as médias para as métricas selecionadas
-        const datasets = selectedMetrics
-            .map((metricKey) => {
-                const metricInfo = METRICS[metricKey];
-                if (!metricInfo) return null;
+        const res = await fetch(`http://localhost:3001/api/balcar/fluxo-inpe/graph/analytics?${params}`);
+        const json: AnalyticsResponse = await res.json();
 
-                const avgData: (number | null)[] = [];
+        if (json.success) {
+          setReservoirData(json.data);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar reservatórios", error);
+      } finally {
+        setLoadingReservoirs(false);
+      }
+    };
 
-                labels.forEach((rotulo) => {
-                    const records = recordsBySite.get(rotulo) || [];
-                    let total = 0;
-                    let count = 0;
+    fetchReservoirs();
+  }, [selectedMetric]); // Removemos selectedCampaign da dependência
 
-                    records.forEach((record) => {
-                        const value = record[metricKey as keyof BalcarRegistro];
+  // --- 2. Busca Dados dos Sítios (Detail - Drill-down) ---
+  useEffect(() => {
+    if (!selectedReservoirId) return;
 
-                        if (
-                            typeof value === "number" &&
-                            value !== null &&
-                            !isNaN(value)
-                        ) {
-                            total += value;
-                            count += 1;
-                        }
-                    });
+    const fetchSites = async () => {
+      setLoadingSites(true);
+      try {
+        const params = new URLSearchParams({
+          metric: selectedMetric,
+          groupBy: "sitio",
+          filterReservatorioId: selectedReservoirId.toString(),
+        });
 
-                    if (count > 0) {
-                        const avgValue = total / count;
-                        avgData.push(parseFloat(avgValue.toFixed(2)));
-                    } else {
-                        avgData.push(null);
-                    }
-                });
+        const res = await fetch(`http://localhost:3001/api/balcar/fluxo-inpe/graph/analytics?${params}`);
+        const json: AnalyticsResponse = await res.json();
 
-                // 4. Cria o objeto Dataset do Chart.js
-                return {
-                    label: `${metricInfo.label} (${metricInfo.unit})`,
-                    data: avgData,
-                    borderColor: metricInfo.color,
-                    backgroundColor: metricInfo.color + "30",
-                    fill: false,
-                    tension: 0.3,
-                    pointRadius: 4,
-                    pointBackgroundColor: metricInfo.color,
-                    yAxisID: metricKey,
-                    hidden: avgData.every((d) => d === null),
-                };
-            })
-            .filter((ds) => ds !== null && !ds.hidden);
+        if (json.success) {
+          setSiteData(json.data);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar sítios", error);
+      } finally {
+        setLoadingSites(false);
+      }
+    };
 
-        return {
-            labels,
-            datasets: datasets as ChartData<"line">["datasets"],
-        };
-    }, [balcarRegistros, selectedMetrics]);
+    fetchSites();
+  }, [selectedReservoirId, selectedMetric]);
 
-    // --- Opções do Gráfico (Eixos Y Dinâmicos) ---
-    const options = useMemo<ChartOptions<"line">>(() => {
-        const dynamicScales: { [key: string]: any } = {
-            x: {
-                title: {
-                    display: true,
-                    text: "Sítio de Medição",
-                    color: colors.sidebarText,
-                },
-                grid: {
-                    color: colors.sidebarBorder,
-                },
-                ticks: {
-                    color: colors.sidebarText,
-                },
+  // --- Handler de Clique no Gráfico de Reservatórios ---
+  const handleReservoirClick = (_event: ChartEvent, elements: ActiveElement[]) => {
+    if (elements.length > 0) {
+      const index = elements[0].index;
+      const reservoir = reservoirData[index];
+      
+      setSelectedReservoirId(reservoir.id);
+      setSelectedReservoirName(reservoir.label);
+    }
+  };
+
+  // --- Configuração dos Gráficos ---
+
+  // Configuração Master (Reservatórios)
+  const reservoirChartConfig = useMemo<ChartData<"bar">>(() => {
+    return {
+      labels: reservoirData.map((d) => d.label),
+      datasets: [
+        {
+          label: `Média de ${METRICS[selectedMetric].label}`,
+          data: reservoirData.map((d) => d.media),
+          backgroundColor: reservoirData.map((d) => 
+             d.id === selectedReservoirId ? THEME.accent : THEME.primary
+          ),
+          borderRadius: 4,
+        },
+      ],
+    };
+  }, [reservoirData, selectedMetric, selectedReservoirId]);
+
+  // Configuração Detail (Sítios)
+  const siteChartConfig = useMemo<ChartData<"bar">>(() => {
+    return {
+      labels: siteData.map((d) => d.label),
+      datasets: [
+        {
+          label: `Média por Sítio`,
+          data: siteData.map((d) => d.media),
+          backgroundColor: THEME.secondary,
+          borderRadius: 4,
+        },
+      ],
+    };
+  }, [siteData]);
+
+  // Opções comuns
+  const commonOptions: ChartOptions<"bar"> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: THEME.bgPage,
+        titleColor: THEME.textMain,
+        bodyColor: THEME.textMain,
+        borderColor: THEME.border,
+        borderWidth: 1,
+        callbacks: {
+            label: (ctx) => {
+                const val = ctx.parsed.y;
+                const unit = METRICS[selectedMetric].unit;
+                return `Média: ${val} ${unit}`;
             },
-        };
+            afterLabel: () => ""
+        }
+      },
+    },
+    scales: {
+      y: {
+        grid: { color: THEME.border + "40" },
+        ticks: { color: THEME.textMuted },
+        title: { 
+            display: true, 
+            text: METRICS[selectedMetric].unit,
+            color: THEME.textMuted 
+        }
+      },
+      x: {
+        grid: { display: false },
+        ticks: { color: THEME.textMuted },
+      },
+    },
+  };
 
-        // Adiciona um eixo Y para cada métrica selecionada
-        selectedMetrics.forEach((metricKey, index) => {
-            const metricInfo = METRICS[metricKey];
-            if (!metricInfo) return;
-
-            const color = metricInfo.color;
-            const unit = metricInfo.unit;
-
-            dynamicScales[metricKey] = {
-                type: "linear" as const,
-                position: index % 2 === 0 ? ("left" as const) : ("right" as const),
-                title: {
-                    display: true,
-                    text: `${metricInfo.label} (${unit})`,
-                    color: color,
-                    font: { weight: "bold" as const },
-                },
-                grid: {
-                    drawOnChartArea: index === 0,
-                    color: colors.sidebarBorder + "40",
-                },
-                ticks: {
-                    color: color,
-                    callback: function (value: any) {
-                        return value + " " + unit;
-                    },
-                },
-                beginAtZero: false,
-            };
-        });
-
-        return {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: "top" as const,
-                    labels: {
-                        color: colors.sidebarText,
-                        usePointStyle: true,
-                    },
-                },
-                title: {
-                    display: true,
-                    text:
-                        selectedMetrics.length > 0
-                            ? `Métricas Médias Balcar (Fluxo INPE) por Sítio (${selectedMetrics.length} selecionada${
-                                  selectedMetrics.length > 1 ? "s" : ""
-                              })`
-                            : "Nenhuma Métrica Selecionada", // Título ajustado quando vazio
-                    color: colors.primary,
-                    font: {
-                        size: 18,
-                        weight: "bold" as const,
-                    },
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function (context) {
-                            let label = context.dataset.label || "";
-                            if (context.parsed.y !== null) {
-                                const metricKey = context.dataset.yAxisID;
-                                const unit = METRICS[metricKey!]?.unit || "";
-                                label += `: ${context.parsed.y} ${unit}`;
-                            }
-                            return label;
-                        },
-                        title: function (tooltipItems) {
-                            if (tooltipItems.length > 0) {
-                                const siteName = tooltipItems[0].label;
-                                const latestRecord = balcarRegistros
-                                    .filter(r => r.sitio.nome === siteName)
-                                    .sort((a, b) => new Date(b.datamedida).getTime() - new Date(a.datamedida).getTime())[0];
-                                
-                                const dateInfo = latestRecord ? `Data: ${new Date(latestRecord.datamedida).toLocaleDateString()} (Campanha ${latestRecord.campanha.nrocampanha})` : '';
-
-                                return [siteName, dateInfo].filter(Boolean);
-                            }
-                            return [];
-                        }
-                    },
-                },
-            },
-            scales: dynamicScales,
-        };
-    }, [selectedMetrics, balcarRegistros]);
-
-    // --- Renderização de Status ---
-
-    if (loading) {
-        return (
-            <div
-                className="p-8 flex justify-center items-center h-screen"
-                style={{
-                    backgroundColor: colors.sidebarBg,
-                    color: colors.sidebarText,
-                }}
-            >
-                <div className="text-xl font-semibold animate-pulse">
-                    Carregando dados Balcar  (até 10000 registros)...
-                </div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div
-                className="p-8 text-center"
-                style={{
-                    backgroundColor: colors.sidebarBg,
-                    color: colors.sidebarText,
-                    minHeight: "100vh",
-                }}
-            >
-                <div className="bg-red-900/50 p-6 rounded-lg border border-red-500">
-                    <h2 className="text-2xl text-red-400 font-bold mb-4">
-                        Erro ao Carregar Dados Balcar
-                    </h2>
-                    <p>{error}</p>
-                    <p className="mt-2 text-sm text-red-300">
-                        Por favor, confirme se o serviço em{" "}
-                        <code>http://localhost:3001</code> está ativo.
-                    </p>
-                </div>
-            </div>
-        );
-    }
-
-    if (balcarRegistros.length === 0) {
-        return (
-            <div
-                className="p-8 flex justify-center items-center h-screen"
-                style={{
-                    backgroundColor: colors.sidebarBg,
-                    color: colors.sidebarText,
-                }}
-            >
-                <div className="text-xl font-semibold">
-                    Nenhum dado válido encontrado para exibição.
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div
-            className="p-4 md:p-8 font-inter"
-            style={{
-                backgroundColor: colors.sidebarBg,
-                color: colors.sidebarText,
-                minHeight: "100vh",
-            }}
-        >
-            <div
-                className="p-6 rounded-xl shadow-2xl"
-                style={{
-                    backgroundColor: colors.sidebarBorder,
-                    border: `1px solid ${colors.sidebarBorder}`,
-                    width: "100%",
-                    maxWidth: "1400px",
-                    margin: "0 auto",
-                }}
-            >
-                <h1
-                    className="text-2xl font-bold mb-6 text-center md:text-left"
-                    style={{ color: colors.primary }}
-                >
-                    Dados Balcar (Médias por Sítio)
+  return (
+    <div
+      className="min-h-screen p-4 md:p-8 font-sans"
+      style={{ backgroundColor: THEME.bgPage, color: THEME.textMain }}
+    >
+      <div className="max-w-7xl mx-auto">
+        
+        {/* --- Cabeçalho e Controles --- */}
+        <div className="mb-8 flex flex-col md:flex-row justify-between items-end md:items-center gap-4 border-b border-slate-700 pb-6">
+            <div>
+                <h1 className="text-3xl font-bold flex items-center gap-2 mb-2">
+                    <span className="w-2 h-8 rounded bg-emerald-300 block"></span>
+                    Painel Balcar
                 </h1>
+                <p className="text-slate-400 text-sm">
+                    Análise comparativa de reservatórios e sítios de coleta.
+                </p>
+            </div>
 
-                {/* Seletor de Métricas */}
-                <div className="mb-6 border-b pb-4 border-gray-600">
-                    <p className="text-lg font-semibold mb-3">
-                        Selecione as métricas para comparar:
-                    </p>
-                    <div className="flex flex-wrap gap-2 md:gap-3">
+            <div className="flex gap-4 bg-slate-800 p-4 rounded-lg border border-slate-700">
+                <div className="flex flex-col">
+                    <label className="text-xs text-slate-400 mb-1 uppercase tracking-wider font-bold">Métrica</label>
+                    <select 
+                        value={selectedMetric}
+                        onChange={(e) => setSelectedMetric(e.target.value)}
+                        className="bg-slate-700 text-white border border-slate-600 rounded px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400"
+                    >
                         {Object.entries(METRICS).map(([key, info]) => (
-                            <label
-                                key={key}
-                                className={`cursor-pointer inline-flex items-center p-2 rounded-lg text-sm font-medium transition-all shadow-md flex-shrink-0 ${
-                                    selectedMetrics.includes(key)
-                                        ? `text-white ring-2 ring-offset-2 ring-offset-${colors.sidebarBorder} ring-[${info.color}]`
-                                        : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                                }`}
-                                // Estilos inline para garantir a cor dinâmica do Tailwind
-                                style={
-                                    selectedMetrics.includes(key)
-                                        ? { backgroundColor: info.color, color: "#FFF" }
-                                        : {}
-                                }
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={selectedMetrics.includes(key)}
-                                    onChange={() => handleMetricChange(key)}
-                                    className="hidden"
-                                    // *** REMOVIDO: disabled={selectedMetrics.includes(key) && selectedMetrics.length === 1} ***
-                                />
-                                {info.label} ({info.unit})
-                            </label>
+                            <option key={key} value={key}>{info.label}</option>
                         ))}
-                    </div>
+                    </select>
                 </div>
 
-                {/* Área do Gráfico */}
-                <div className="h-[60vh] min-h-[400px]">
-                    {chartData.datasets.length > 0 ? (
-                        <Line data={chartData} options={options} />
-                    ) : (
-                        <div className="flex justify-center items-center h-full">
-                            <p className="text-xl text-gray-400">
-                                Selecione pelo menos uma métrica acima.
-                            </p>
-                        </div>
-                    )}
+                <div className="flex flex-col">
+                    <label className="text-xs text-slate-400 mb-1 uppercase tracking-wider font-bold">Campanha</label>
+                    <div className="bg-slate-700/50 text-slate-300 border border-slate-600 rounded px-3 py-2 text-sm font-medium cursor-not-allowed select-none">
+                       Todas as Campanhas
+                    </div>
                 </div>
             </div>
         </div>
-    );
+
+        {/* --- Área de Gráficos (Master - Detail) --- */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            {/* GRÁFICO 1: RESERVATÓRIOS (MASTER) */}
+            <div className={`p-6 rounded-xl border transition-all duration-300 ${loadingReservoirs ? 'opacity-50' : 'opacity-100'}`}
+                 style={{ backgroundColor: THEME.bgCard, borderColor: THEME.border }}>
+                
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-emerald-400">Por Reservatório</h2>
+                    <span className="text-xs bg-slate-700 px-2 py-1 rounded text-slate-300">
+                        Clique na barra para detalhar
+                    </span>
+                </div>
+
+                <div className="h-[400px] relative">
+                    {loadingReservoirs && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="animate-spin h-8 w-8 border-4 border-emerald-500 rounded-full border-t-transparent"></span>
+                        </div>
+                    )}
+                    
+                    {!loadingReservoirs && reservoirData.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-slate-500">
+                            Sem dados para esta métrica.
+                        </div>
+                    ) : (
+                        <Bar 
+                            data={reservoirChartConfig} 
+                            options={{
+                                ...commonOptions,
+                                onClick: handleReservoirClick,
+                                plugins: { ...commonOptions.plugins, title: { display: false } }
+                            }} 
+                        />
+                    )}
+                </div>
+            </div>
+
+            {/* GRÁFICO 2: SÍTIOS (DETAIL) */}
+            <div className={`p-6 rounded-xl border transition-all duration-300 ${selectedReservoirId ? 'opacity-100' : 'opacity-40 grayscale'}`}
+                 style={{ backgroundColor: THEME.bgCard, borderColor: THEME.border }}>
+                
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-emerald-700">
+                        {selectedReservoirName 
+                            ? `Sítios de ${selectedReservoirName}` 
+                            : "Visão Detalhada"}
+                    </h2>
+                    {!selectedReservoirId && (
+                        <span className="text-xs text-slate-500 italic">
+                            Selecione um reservatório ao lado
+                        </span>
+                    )}
+                </div>
+
+                <div className="h-[400px] relative">
+                    {loadingSites && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-slate-800/50 z-10">
+                            <span className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></span>
+                        </div>
+                    )}
+
+                    {!selectedReservoirId ? (
+                        <div className="h-full flex flex-col items-center justify-center text-slate-600 border-2 border-dashed border-slate-700 rounded-lg">
+                            <svg className="w-12 h-12 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+                            <p>Clique em uma barra à esquerda</p>
+                            <p className="text-sm">para ver a comparação entre sítios.</p>
+                        </div>
+                    ) : siteData.length === 0 && !loadingSites ? (
+                        <div className="h-full flex items-center justify-center text-slate-500">
+                            Nenhum dado de sítio encontrado.
+                        </div>
+                    ) : (
+                        <Bar 
+                            data={siteChartConfig} 
+                            options={commonOptions} 
+                        />
+                    )}
+                </div>
+            </div>
+
+        </div>
+
+        {/* Rodapé Informativo */}
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 text-center text-xs text-slate-500">
+             <div className="bg-slate-800 p-3 rounded">
+                <strong className="block text-slate-300 text-lg mb-1">{reservoirData.length}</strong>
+                Reservatórios Analisados
+             </div>
+             <div className="bg-slate-800 p-3 rounded">
+                <strong className="block text-slate-300 text-lg mb-1">
+                    {selectedReservoirId ? siteData.length : '-'}
+                </strong>
+                Sítios no Detalhe
+             </div>
+             <div className="bg-slate-800 p-3 rounded">
+                <strong className="block text-slate-300 text-lg mb-1">
+                    {selectedMetric ? METRICS[selectedMetric].unit : '-'}
+                </strong>
+                Unidade de Medida
+             </div>
+        </div>
+
+      </div>
+    </div>
+  );
 };
 
 export default BalcarGraph;

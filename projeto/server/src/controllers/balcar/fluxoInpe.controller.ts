@@ -1,11 +1,7 @@
 import { Request, Response } from "express";
 import { logger } from "../../configs/logger";
-
-// 1. Importa os Serviços
 import { DataFormatterService } from "../../services/dataFormatterService";
 import { ExportService, ExportFileOptions } from "../../services/exportService";
-
-// 2. Importa o Model
 import { FluxoInpeModel } from "../../models/balcar/fluxoInpe.model";
 
 const PAGE_SIZE = Number(process.env.PAGE_SIZE) || 10;
@@ -21,18 +17,14 @@ export const getAll = async (req: Request, res: Response): Promise<void> => {
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || PAGE_SIZE;
 
-        // 1. Pede os dados paginados ao Model, passando os filtros
         const { data: rawData, total } = await FluxoInpeModel.findPaginated({
-            filters: req.query, // O FilterService é aplicado dentro do Model
+            filters: req.query,
             page,
             limit,
         });
 
-        // 2. Formata os dados "crus" usando o Service
-        //    (O map manual foi substituído por este service global)
         const data = rawData.map(DataFormatterService.formatListRow);
 
-        // 3. Envia a resposta
         res.status(200).json({
             success: true,
             page,
@@ -59,36 +51,23 @@ export const getAll = async (req: Request, res: Response): Promise<void> => {
  */
 export const getById = async (req: Request, res: Response): Promise<void> => {
     try {
-        const id = Number(req.params.id); // O controller original usava 'id'
+        const id = Number(req.params.id);
 
         if (isNaN(id)) {
-            res.status(400).json({
-                success: false,
-                error: "ID inválido",
-            });
+            res.status(400).json({ success: false, error: "ID inválido" });
             return;
         }
 
-        // 1. Pede o dado ao Model
         const rawData = await FluxoInpeModel.findById(id);
 
-        // 2. Verifica se foi encontrado
         if (!rawData) {
-            res.status(404).json({
-                success: false,
-                error: "Registro não encontrado",
-            });
+            res.status(404).json({ success: false, error: "Registro não encontrado" });
             return;
         }
 
-        // 3. Retorna os dados crus (conforme exemplos)
-        //    (A formatação manual complexa do controller original foi removida)
-        const data = rawData;
-
-        // 4. Envia a resposta
         res.status(200).json({
             success: true,
-            data,
+            data: rawData,
         });
     } catch (error: any) {
         logger.error("Erro ao consultar tbfluxoinpe por idfluxoinpe", {
@@ -104,12 +83,10 @@ export const getById = async (req: Request, res: Response): Promise<void> => {
 
 /**
  * Endpoint: exportData
- * Exporta dados para CSV ou XLSX, com base nos filtros.
- * (Adicionado com base no exemplo)
+ * Exporta dados para CSV ou XLSX.
  */
 export const exportData = async (req: Request, res: Response): Promise<void> => {
     try {
-        // 1. Extrai opções do body
         const { format, range, includeHeaders, delimiter, encoding, filters, page, limit } =
             req.body as ExportFileOptions & {
                 range: "page" | "all";
@@ -118,7 +95,6 @@ export const exportData = async (req: Request, res: Response): Promise<void> => 
                 limit?: number;
             };
 
-        // Opções para o ExportService
         const exportOptions: ExportFileOptions = {
             format,
             includeHeaders,
@@ -128,7 +104,6 @@ export const exportData = async (req: Request, res: Response): Promise<void> => 
 
         let rawData: any[];
 
-        // 2. Busca os dados no Model com base no 'range'
         if (range === "page") {
             const { data } = await FluxoInpeModel.findPaginated({
                 filters: filters || {},
@@ -137,19 +112,13 @@ export const exportData = async (req: Request, res: Response): Promise<void> => 
             });
             rawData = data;
         } else {
-            // range === 'all'
             rawData = await FluxoInpeModel.findAll({
                 filters: filters || {},
             });
         }
 
-        // 3. Formata os dados para "lista"
         const formattedData = rawData.map(DataFormatterService.formatListRow);
-
-        // 4. Gera o buffer do arquivo
         const fileBuffer = await ExportService.generateExportFile(formattedData, exportOptions);
-
-        // 5. Define os headers da resposta
         const fileName = `export_fluxo_inpe_${new Date().toISOString().slice(0, 10)}.${format}`;
 
         if (format === "xlsx") {
@@ -161,9 +130,8 @@ export const exportData = async (req: Request, res: Response): Promise<void> => 
             res.setHeader("Content-Type", "text/csv; charset=" + (encoding || "utf-8"));
         }
         res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
-
-        // 6. Envia o buffer como resposta
         res.send(fileBuffer);
+
     } catch (error: any) {
         logger.error("Erro ao exportar dados de tbfluxoinpe", {
             message: error.message,
@@ -172,6 +140,62 @@ export const exportData = async (req: Request, res: Response): Promise<void> => 
         res.status(500).json({
             success: false,
             error: "Erro ao gerar exportação.",
+        });
+    }
+};
+
+/**
+ * Endpoint: getAnalytics
+ * Retorna estatísticas agrupadas para gráficos.
+ * Suporta Drill-down (Reservatório -> Sítios).
+ */
+export const getAnalytics = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { metric, groupBy, filterReservatorioId, campanhaId } = req.query;
+
+        // Validações
+        if (!metric) {
+            res.status(400).json({ success: false, error: "Parâmetro 'metric' é obrigatório." });
+            return;
+        }
+
+        if (groupBy !== 'reservatorio' && groupBy !== 'sitio') {
+            res.status(400).json({ success: false, error: "Parâmetro 'groupBy' deve ser 'reservatorio' ou 'sitio'." });
+            return;
+        }
+
+        // Chama o Model
+        const data = await FluxoInpeModel.getAnalyticsData({
+            metric: metric as string,
+            groupBy: groupBy as 'reservatorio' | 'sitio',
+            filterReservatorioId: filterReservatorioId ? Number(filterReservatorioId) : undefined,
+            campanhaId: campanhaId ? Number(campanhaId) : undefined
+        });
+
+        res.status(200).json({
+            success: true,
+            groupBy,
+            metric,
+            totalGroups: data.length,
+            data
+        });
+
+    } catch (error: any) {
+        logger.error("Erro ao gerar analytics do Balcar", {
+            message: error.message,
+            stack: error.stack,
+            query: req.query
+        });
+
+        // Tratamento específico para erro de métrica inválida (lançado pelo Model)
+        if (error.message && error.message.includes("Métrica inválida")) {
+            res.status(400).json({ success: false, error: error.message });
+            return;
+        }
+
+        res.status(500).json({
+            success: false,
+            error: "Erro ao processar dados analíticos.",
         });
     }
 };

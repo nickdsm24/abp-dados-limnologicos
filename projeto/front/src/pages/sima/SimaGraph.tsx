@@ -1,470 +1,382 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Line } from "react-chartjs-2";
 import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    LineElement,
-    PointElement,
-    Title,
-    Tooltip,
-    Legend,
-    // Tipagem básica
-    type ChartData,
-    type ChartOptions,
-    // Adicione Scale para eixos dinâmicos
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  LineElement,
+  PointElement,
+  Title,
+  Tooltip,
+  Legend,
+  // Adicione 'type' antes destes dois:
+  type ChartData,
+  type ChartOptions,
 } from "chart.js";
 
-// --- Registro de Componentes do Chart.js ---
+// --- Registro do Chart.js ---
 ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    LineElement,
-    PointElement,
-    Title,
-    Tooltip,
-    Legend
+  CategoryScale,
+  LinearScale,
+  LineElement,
+  PointElement,
+  Title,
+  Tooltip,
+  Legend
 );
 
-// --- Paleta de Cores e Estilos ---
-const colors = {
-    primary: "#C2410C", // Laranja Queimado (Cor Sima)
-    secondary: "#F97316", // Laranja Vibrante
-    sidebarBg: "#1E293B", // Fundo Principal da Sidebar (Slate 800)
-    sidebarText: "#F8FAFC", // Cor principal do texto (White/Slate 50)
-    sidebarBorder: "#334155", // Borda sutil e separadores (Slate 700)
+// --- Configurações de Estilo (Dark Theme) ---
+const THEME = {
+  primary: "#F97316", // Orange 500
+  bgCard: "#1E293B", // Slate 800
+  bgPage: "#0F172A", // Slate 900
+  textMain: "#F8FAFC", // Slate 50
+  textMuted: "#94A3B8", // Slate 400
+  border: "#334155", // Slate 700
 };
 
-// --- Mapeamento de Métricas ---
-// Mapeia a chave da API para um rótulo amigável, unidade e cor.
-// Cores inspiradas no Tailwind para melhor contraste visual.
+// --- Mapeamento de Métricas (Chaves da API de Analytics) ---
+// Note que as chaves agora correspondem ao retorno do backend (avg_*)
 const METRICS: {
-    [key: string]: { label: string; unit: string; color: string };
+  [key: string]: { label: string; unit: string; color: string; type: "line" | "bar" };
 } = {
-    tempar: { label: "Temperatura do Ar", unit: "°C", color: "#F97316" },
-    tempag1: { label: "Temperatura da Água", unit: "°C", color: "#3B82F6" },
-    pressatm: { label: "Pressão Atmosférica", unit: "hPa", color: "#10B981" },
-    ur: { label: "Umidade Relativa", unit: "%", color: "#8B5CF6" },
-    intensvt: { label: "Intensidade do Vento", unit: "m/s", color: "#F59E0B" },
-    dirvt: { label: "Direção do Vento", unit: "graus", color: "#EC4899" },
-    radincid: { label: "Radiação Incidente", unit: "W/m²", color: "#EF4444" },
-    co2_high: { label: "CO2 (Alto)", unit: "ppm", color: "#6B7280" },
-    precipitacao: { label: "Precipitação", unit: "mm", color: "#06B6D4" },
-    // Adicione as outras colunas conforme necessário,
-    // mas priorizamos as que têm unidades distintas e dados no exemplo.
+  avg_tempar: { label: "Temp. Ar (Méd)", unit: "°C", color: "#F97316", type: "line" },
+  max_tempar: { label: "Temp. Ar (Máx)", unit: "°C", color: "#fdba74", type: "line" }, // Laranja claro
+  avg_temp_agua: { label: "Temp. Água", unit: "°C", color: "#3B82F6", type: "line" },
+  avg_ur: { label: "Umidade Rel.", unit: "%", color: "#8B5CF6", type: "line" },
+  avg_pressao: { label: "Pressão Atm", unit: "hPa", color: "#10B981", type: "line" },
+  avg_vento: { label: "Vento", unit: "m/s", color: "#F59E0B", type: "line" },
+  avg_radiacao: { label: "Radiação", unit: "W/m²", color: "#EF4444", type: "line" },
+  total_chuva: { label: "Precipitação", unit: "mm", color: "#06B6D4", type: "bar" }, // Chuva geralmente é barra
 };
 
-// --- Interfaces de Dados ---
-
-interface EstacaoSimaAninhada {
-    idestacao: string;
-    rotulo: string;
-    lat: number;
-    lng: number;
+// --- Interfaces ---
+interface Station {
+  idestacao: string;
+  rotulo: string;
 }
 
-// Interface de Registro SIMA estendida para todos os parâmetros mensuráveis
-interface SimaRegistro {
-    idsima: number;
-    datahora: string;
-    // Parâmetros a serem plotados
-    dirvt: number | null;
-    intensvt: number | null;
-    u_vel: number | null;
-    v_vel: number | null;
-    tempag1: number | null;
-    tempag2: number | null;
-    tempag3: number | null;
-    tempag4: number | null;
-    tempar: number | null;
-    ur: number | null;
-    tempar_r: number | null;
-    pressatm: number | null;
-    radincid: number | null;
-    radrefl: number | null;
-    co2_low: number | null;
-    co2_high: number | null;
-    precipitacao: number | null;
-    // Outros campos
-    estacao: EstacaoSimaAninhada;
-    [key: string]: any; // Permite acesso dinâmico
+interface AnalyticsDataPoint {
+  label: string; // Data formatada
+  [key: string]: number | string;
 }
 
-interface ApiResponse<T> {
-    success: boolean;
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    data: T[];
+interface AnalyticsResponse {
+  success: boolean;
+  data: AnalyticsDataPoint[];
 }
-
-// --- Componente Principal: SimaGraph ---
 
 const SimaGraph: React.FC = () => {
-    const [simaRegistros, setSimaRegistros] = useState<SimaRegistro[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    // Estado para as métricas que o usuário selecionou, começa com Temperatura do Ar
-    const [selectedMetrics, setSelectedMetrics] = useState<string[]>(["tempar", "pressatm"]);
+  // --- Estados de Controle ---
+  const [stations, setStations] = useState<Station[]>([]);
+  const [selectedStation, setSelectedStation] = useState<string>("");
+  
+  // Datas iniciais (ex: Dezembro de 2016 conforme seus dados)
+  const [startDate, setStartDate] = useState("2016-12-01");
+  const [endDate, setEndDate] = useState("2016-12-31");
+  const [granularity, setGranularity] = useState<"day" | "month">("day");
 
-    // Função para lidar com a seleção/desseleção de métricas
-    const handleMetricChange = useCallback((key: string) => {
-        setSelectedMetrics((prev) => {
-            if (prev.includes(key)) {
-                // ** ALTERAÇÃO AQUI: Não verifica o tamanho, permitindo lista vazia **
-                return prev.filter((k) => k !== key);
-            } else {
-                // Adiciona a nova métrica
-                return [...prev, key];
-            }
-        });
-    }, []);
+  // Estado dos Dados
+  const [chartDataPoints, setChartDataPoints] = useState<AnalyticsDataPoint[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Métricas selecionadas pelo usuário
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([
+    "avg_tempar",
+    "avg_temp_agua",
+  ]);
 
-    // --- Busca de dados da API ---
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                // Manter o URL original que usa a porta 3001
-                const simaResponse = await fetch(
-                    "http://localhost:3001/api/sima/sima/all?limit=10000"
-                );
+  // --- 1. Carregar Lista de Estações (Ao montar) ---
+  useEffect(() => {
+    const fetchStations = async () => {
+      try {
+        const res = await fetch("http://localhost:3001/api/sima/sima/graph/stations");
+        const json = await res.json();
+        if (json.success) {
+          setStations(json.data);
+          // Seleciona a primeira estação automaticamente se houver
+          if (json.data.length > 0) setSelectedStation(json.data[0].idestacao);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar estações", err);
+      }
+    };
+    fetchStations();
+  }, []);
 
-                if (!simaResponse.ok) {
-                    throw new Error(
-                        `Erro ${simaResponse.status} ao carregar dados SIMA.`
-                    );
-                }
+  // --- 2. Carregar Dados do Gráfico (Ao mudar filtros) ---
+  useEffect(() => {
+    if (!selectedStation) return;
 
-                const simaData: ApiResponse<SimaRegistro> = await simaResponse.json();
-
-                if (simaData.success) {
-                    // Filtra e limita os registros
-                    const validRecords = simaData.data.filter((r) => r.datahora).slice(0, 10000);
-                    setSimaRegistros(validRecords);
-                } else {
-                    throw new Error("API retornou sucesso: false");
-                }
-            } catch (e) {
-                if (e instanceof Error) {
-                    setError(`Erro ao buscar dados: ${e.message}. Verifique se a API está rodando em http://localhost:3001.`);
-                } else {
-                    setError("Erro desconhecido ao buscar dados.");
-                }
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
-    }, []);
-
-    // --- Processamento dos dados para o Chart.js (Múltiplas Métricas) ---
-    const chartData = useMemo<ChartData<"line">>(() => {
-        // 1. Determinar todos os rótulos de estação (Eixo X)
-        const labels: string[] = Array.from(
-            new Set(simaRegistros.map((r) => r.estacao.rotulo))
-        ).sort((a, b) => a.localeCompare(b));
-
-        // 2. Mapear dados de registro por rótulo de estação
-        const recordsByStation = new Map<string, SimaRegistro[]>();
-        simaRegistros.forEach((registro) => {
-            const rotulo = registro.estacao.rotulo;
-            if (!recordsByStation.has(rotulo)) {
-                recordsByStation.set(rotulo, []);
-            }
-            recordsByStation.get(rotulo)!.push(registro);
+    const fetchAnalytics = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const query = new URLSearchParams({
+          stationId: selectedStation,
+          start: startDate,
+          end: endDate,
+          granularity,
         });
 
-        // 3. Calcular as médias para as métricas selecionadas
-        const datasets = selectedMetrics
-            .map((metricKey) => {
-                const metricInfo = METRICS[metricKey];
-                // Ignora métricas não definidas
-                if (!metricInfo) return null;
+        const res = await fetch(`http://localhost:3001/api/sima/sima/graph/analytics?${query}`);
+        const json: AnalyticsResponse = await res.json();
 
-                const avgData: (number | null)[] = [];
+        if (json.success) {
+          setChartDataPoints(json.data);
+        } else {
+            setChartDataPoints([]);
+            // Não tratar como erro crítico, apenas sem dados
+        }
+      } catch (err) {
+        setError("Falha ao conectar com o servidor.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-                labels.forEach((rotulo) => {
-                    const records = recordsByStation.get(rotulo) || [];
-                    let total = 0;
-                    let count = 0;
+    fetchAnalytics();
+  }, [selectedStation, startDate, endDate, granularity]);
 
-                    records.forEach((record) => {
-                        const value = record[metricKey as keyof SimaRegistro];
-                        // Garante que o valor seja um número válido
-                        if (typeof value === "number" && value !== null && !isNaN(value)) {
-                            total += value;
-                            count += 1;
-                        }
-                    });
-
-                    if (count > 0) {
-                        const avgValue = total / count;
-                        // Adiciona o valor médio arredondado
-                        avgData.push(parseFloat(avgValue.toFixed(2)));
-                    } else {
-                        // Se não houver dados, adicione null para pular o ponto no gráfico
-                        avgData.push(null);
-                    }
-                });
-
-                // 4. Cria o objeto Dataset do Chart.js
-                return {
-                    label: `${metricInfo.label} (${metricInfo.unit})`,
-                    data: avgData,
-                    borderColor: metricInfo.color,
-                    backgroundColor: metricInfo.color + "30", // Cor de preenchimento com opacidade
-                    fill: false,
-                    tension: 0.3,
-                    pointRadius: 4,
-                    pointBackgroundColor: metricInfo.color,
-                    yAxisID: metricKey, // ID do eixo Y corresponde à chave da métrica
-                    hidden: avgData.every(d => d === null), // Esconde datasets sem dados
-                };
-            })
-            .filter((ds) => ds !== null && !ds.hidden); // Remove métricas inválidas ou sem dados
-
-        return {
-            labels,
-            datasets: datasets as ChartData<"line">["datasets"],
-        };
-    }, [simaRegistros, selectedMetrics]);
-
-    // --- Opções do Gráfico (Eixos Y Dinâmicos) ---
-    const options = useMemo<ChartOptions<"line">>(() => {
-        // Cria um objeto de configuração de eixos
-        const dynamicScales: { [key: string]: any } = {
-            x: {
-                title: {
-                    display: true,
-                    text: "Estação",
-                    color: colors.sidebarText,
-                },
-                grid: {
-                    color: colors.sidebarBorder,
-                },
-                ticks: {
-                    color: colors.sidebarText,
-                },
-            },
-        };
-
-        // Adiciona um eixo Y para cada métrica selecionada
-        selectedMetrics.forEach((metricKey, index) => {
-            const metricInfo = METRICS[metricKey];
-            if (!metricInfo) return;
-
-            const color = metricInfo.color;
-            const unit = metricInfo.unit;
-
-            dynamicScales[metricKey] = {
-                type: "linear" as const,
-                position: index % 2 === 0 ? ("left" as const) : ("right" as const), // Alterna L/R
-                title: {
-                    display: true,
-                    text: `${metricInfo.label} (${unit})`,
-                    color: color,
-                    font: { weight: 'bold' as const },
-                },
-                grid: {
-                    // Apenas o primeiro eixo desenha as linhas de grade para não poluir
-                    drawOnChartArea: index === 0,
-                    color: colors.sidebarBorder + '40',
-                },
-                ticks: {
-                    color: color,
-                    callback: function (value: any) {
-                        return value + " " + unit;
-                    },
-                },
-                // Permite o "stacking" de múltiplos eixos no mesmo lado
-                // offset: true,
-                // Garantir que o eixo comece de um ponto relevante, não de zero forçadamente
-                beginAtZero: false,
-            };
-        });
-
-        // Retorna as opções completas do gráfico
-        return {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: "top" as const,
-                    labels: {
-                        color: colors.sidebarText,
-                        usePointStyle: true,
-                    },
-                },
-                title: {
-                    display: true,
-                    text:
-                        selectedMetrics.length > 0
-                            ? `Métricas Médias por Estação (${selectedMetrics.length} selecionada${selectedMetrics.length > 1 ? 's' : ''})`
-                            : "Selecione uma Métrica para Visualizar",
-                    color: colors.primary,
-                    font: {
-                        size: 18,
-                        weight: "bold" as const,
-                    },
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function (context) {
-                            let label = context.dataset.label || "";
-                            if (context.parsed.y !== null) {
-                                // Encontra a unidade baseada no ID do eixo
-                                const metricKey = context.dataset.yAxisID;
-                                const unit = METRICS[metricKey!]?.unit || "";
-                                label += `: ${context.parsed.y} ${unit}`;
-                            }
-                            return label;
-                        },
-                    },
-                },
-            },
-            scales: dynamicScales,
-        };
-    }, [selectedMetrics]);
-
-    // --- Renderização de Status ---
-
-    if (loading) {
-        return (
-            <div
-                className="p-8 flex justify-center items-center h-screen"
-                style={{
-                    backgroundColor: colors.sidebarBg,
-                    color: colors.sidebarText,
-                }}
-            >
-                <div className="text-xl font-semibold animate-pulse">
-                    Carregando dados SIMA (até 10000 registros)...
-                </div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div
-                className="p-8 text-center"
-                style={{
-                    backgroundColor: colors.sidebarBg,
-                    color: colors.sidebarText,
-                    minHeight: "100vh",
-                }}
-            >
-                <div className="bg-red-900/50 p-6 rounded-lg border border-red-500">
-                    <h2 className="text-2xl text-red-400 font-bold mb-4">
-                        Erro ao Carregar Dados
-                    </h2>
-                    <p>{error}</p>
-                    <p className="mt-2 text-sm text-red-300">
-                        Por favor, confirme se o serviço em{" "}
-                        <code>http://localhost:3001</code> está ativo.
-                    </p>
-                </div>
-            </div>
-        );
-    }
-
-    if (simaRegistros.length === 0) {
-        return (
-            <div
-                className="p-8 flex justify-center items-center h-screen"
-                style={{
-                    backgroundColor: colors.sidebarBg,
-                    color: colors.sidebarText,
-                }}
-            >
-                <div className="text-xl font-semibold">
-                    Nenhum dado válido encontrado para exibição.
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div
-            className="p-4 md:p-8 font-inter"
-            style={{
-                backgroundColor: colors.sidebarBg,
-                color: colors.sidebarText,
-                minHeight: "100vh",
-            }}
-        >
-            <div
-                className="p-6 rounded-xl shadow-2xl"
-                style={{
-                    backgroundColor: colors.sidebarBorder,
-                    border: `1px solid ${colors.sidebarBorder}`,
-                    width: "100%",
-                    maxWidth: "1400px",
-                    margin: "0 auto",
-                }}
-            >
-                <h1
-                    className="text-2xl font-bold mb-6 text-center md:text-left"
-                    style={{ color: colors.primary }}
-                >
-                    Dados Sima (Médias por estação)
-                </h1>
-
-                {/* Seletor de Métricas */}
-                <div className="mb-6 border-b pb-4 border-gray-600">
-                    <p className="text-lg font-semibold mb-3">
-                        Selecione as métricas para comparar:
-                    </p>
-                    <div className="flex flex-wrap gap-2 md:gap-3">
-                        {Object.entries(METRICS).map(([key, info]) => (
-                            <label
-                                key={key}
-                                className={`cursor-pointer inline-flex items-center p-2 rounded-lg text-sm font-medium transition-all shadow-md flex-shrink-0 ${selectedMetrics.includes(key)
-                                        ? `text-white ring-2 ring-offset-2 ring-offset-${colors.sidebarBorder} ring-[${info.color}]`
-                                        : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                                    }`}
-                                // Estilos inline para garantir a cor dinâmica do Tailwind
-                                style={
-                                    selectedMetrics.includes(key)
-                                        ? { backgroundColor: info.color, color: "#FFF" }
-                                        : {}
-                                }
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={selectedMetrics.includes(key)}
-                                    onChange={() => handleMetricChange(key)}
-                                    className="hidden"
-                                    // ** ALTERAÇÃO AQUI: A remoção da propriedade 'disabled' é a chave **
-                                    // disabled={
-                                    //     selectedMetrics.includes(key) &&
-                                    //     selectedMetrics.length === 1
-                                    // }
-                                />
-                                {info.label} ({info.unit})
-                            </label>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Área do Gráfico */}
-                <div className="h-[60vh] min-h-[400px]">
-                    {chartData.datasets.length > 0 ? (
-                        <Line data={chartData} options={options} />
-                    ) : (
-                        <div className="flex justify-center items-center h-full">
-                            <p className="text-xl text-gray-400">
-                                Selecione pelo menos uma métrica acima.
-                            </p>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
+  // --- 3. Manipuladores de UI ---
+  const toggleMetric = (key: string) => {
+    setSelectedMetrics((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
     );
+  };
+
+  // --- 4. Construção do Data Object para Chart.js ---
+  const chartConfig = useMemo<ChartData<"line">>(() => {
+    const labels = chartDataPoints.map((p) => {
+        // Formatação simples da data para o eixo X
+        const d = new Date(p.label);
+        return granularity === 'day' 
+            ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+            : d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+    });
+
+    const datasets = selectedMetrics.map((metricKey) => {
+      const info = METRICS[metricKey];
+      return {
+        label: info.label,
+        data: chartDataPoints.map((p) => Number(p[metricKey]) || null),
+        borderColor: info.color,
+        backgroundColor: info.color,
+        yAxisID: metricKey, // Eixo Y independente
+        tension: 0.3, // Curva suave
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        borderWidth: 2,
+        type: info.type as any, // Permite misturar Linha e Barra se necessário
+      };
+    });
+
+    return { labels, datasets };
+  }, [chartDataPoints, selectedMetrics, granularity]);
+
+  // --- 5. Opções do Gráfico (Eixos Dinâmicos) ---
+  const options = useMemo<ChartOptions<"line">>(() => {
+    const scales: Record<string, any> = {
+      x: {
+        grid: { color: THEME.border },
+        ticks: { color: THEME.textMuted },
+      },
+    };
+
+    // Gera um eixo Y para cada métrica selecionada
+    selectedMetrics.forEach((key, index) => {
+      const info = METRICS[key];
+      scales[key] = {
+        type: "linear",
+        display: true,
+        position: index % 2 === 0 ? "left" : "right",
+        grid: {
+          drawOnChartArea: index === 0, // Apenas o primeiro desenha linhas horizontais
+          color: THEME.border + "40", // Transparência
+        },
+        title: {
+          display: true,
+          text: info.unit,
+          color: info.color,
+          font: { size: 10, weight: "bold" },
+        },
+        ticks: { color: info.color },
+      };
+    });
+
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: "index",
+        intersect: false,
+      },
+      plugins: {
+        legend: {
+          labels: { color: THEME.textMain, usePointStyle: true },
+        },
+        tooltip: {
+            backgroundColor: THEME.bgPage,
+            titleColor: THEME.textMain,
+            bodyColor: THEME.textMain,
+            borderColor: THEME.border,
+            borderWidth: 1,
+            callbacks: {
+                label: (context) => {
+                     const val = context.parsed.y;
+                     // @ts-ignore
+                     const unit = METRICS[context.dataset.yAxisID]?.unit || "";
+                     return ` ${context.dataset.label}: ${val} ${unit}`;
+                }
+            }
+        },
+      },
+      scales,
+    };
+  }, [selectedMetrics]);
+
+  // --- Renderização ---
+  return (
+    <div
+      className="min-h-screen p-4 md:p-8 font-sans"
+      style={{ backgroundColor: THEME.bgPage, color: THEME.textMain }}
+    >
+      <div
+        className="max-w-7xl mx-auto rounded-xl shadow-2xl overflow-hidden border"
+        style={{ backgroundColor: THEME.bgCard, borderColor: THEME.border }}
+      >
+        {/* Cabeçalho e Controles */}
+        <div className="p-6 border-b border-gray-700">
+          <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <span className="w-2 h-8 rounded bg-[#e3d7bf] block"></span>
+              Monitoramento SIMA
+            </h1>
+            
+            {/* Controles de Filtro */}
+            <div className="flex flex-wrap gap-3 items-center bg-slate-900 p-3 rounded-lg border border-slate-700">
+              
+              {/* Select Estação */}
+              <div className="flex flex-col">
+                <label className="text-xs text-slate-400 mb-1">Estação</label>
+                <select
+                  className="bg-slate-800 border border-slate-600 text-sm rounded px-2 py-1 focus:ring-2 focus:ring-orange-500 outline-none"
+                  value={selectedStation}
+                  onChange={(e) => setSelectedStation(e.target.value)}
+                  disabled={stations.length === 0}
+                >
+                  {stations.length === 0 && <option>Carregando...</option>}
+                  {stations.map((s) => (
+                    <option key={s.idestacao} value={s.idestacao}>
+                      {s.rotulo}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Data Inicio */}
+              <div className="flex flex-col">
+                <label className="text-xs text-slate-400 mb-1">Início</label>
+                <input
+                  type="date"
+                  className="bg-slate-800 border border-slate-600 text-sm rounded px-2 py-1 outline-none"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+
+              {/* Data Fim */}
+              <div className="flex flex-col">
+                <label className="text-xs text-slate-400 mb-1">Fim</label>
+                <input
+                  type="date"
+                  className="bg-slate-800 border border-slate-600 text-sm rounded px-2 py-1 outline-none"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+
+               {/* Granularidade */}
+               <div className="flex flex-col">
+                <label className="text-xs text-slate-400 mb-1">Agrupar por</label>
+                <select
+                  className="bg-slate-800 border border-slate-600 text-sm rounded px-2 py-1 outline-none"
+                  value={granularity}
+                  onChange={(e) => setGranularity(e.target.value as "day" | "month")}
+                >
+                  <option value="day">Dia</option>
+                  <option value="month">Mês</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Seleção de Métricas (Chips) */}
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(METRICS).map(([key, info]) => {
+              const isActive = selectedMetrics.includes(key);
+              return (
+                <button
+                  key={key}
+                  onClick={() => toggleMetric(key)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                    isActive
+                      ? "opacity-100 shadow-lg translate-y-[-1px]"
+                      : "opacity-50 hover:opacity-80 bg-slate-800 border-slate-700"
+                  }`}
+                  style={
+                    isActive
+                      ? { backgroundColor: info.color, color: "#fff", borderColor: info.color }
+                      : { color: THEME.textMuted }
+                  }
+                >
+                  {info.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Área do Gráfico */}
+        <div className="relative h-[500px] w-full p-4 bg-slate-800/50">
+          {loading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 z-10 backdrop-blur-sm">
+              <div className="text-orange-500 font-bold animate-pulse text-lg">
+                Processando dados analíticos...
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="absolute inset-0 flex items-center justify-center z-10">
+               <div className="text-red-400 bg-red-900/20 border border-red-500/50 p-4 rounded text-center">
+                 <p className="font-bold">Ops!</p>
+                 <p>{error}</p>
+               </div>
+            </div>
+          )}
+
+          {!loading && !error && chartDataPoints.length === 0 && (
+             <div className="absolute inset-0 flex items-center justify-center z-10">
+                <div className="text-slate-500 text-center">
+                    <p className="text-lg">Nenhum dado encontrado para este período.</p>
+                    <p className="text-sm">Tente ajustar as datas ou trocar de estação.</p>
+                </div>
+             </div>
+          )}
+
+          {chartDataPoints.length > 0 && (
+            <Line data={chartConfig} options={options} />
+          )}
+        </div>
+        
+        <div className="bg-slate-900 p-2 text-center text-xs text-slate-500 border-t border-slate-700">
+           Total de registros analisados: {chartDataPoints.length} pontos temporais
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default SimaGraph;

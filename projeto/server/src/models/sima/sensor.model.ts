@@ -1,15 +1,21 @@
+// src/models/sima/sensor.model.ts
+
 import { simaPool } from '../../configs/db'; // ATENÇÃO: Importa o simaPool
 import { FilterService } from '../../services/filterService';
 
 // Mapeia as chaves do frontend (ex: req.query) para as colunas reais
 // do banco de dados (com seus aliases).
-const sensorColumnMap = {
-    // Chaves de Range (number)
+const sensorColumnMap: { [key: string]: string } = {
+    // --- Identificadores (Number) ---
     idSensor: 'a.idSensor',
+    idsensor: 'a.idSensor', // Alias extra caso o frontend envie tudo minúsculo
 
-    // Chaves de Igualdade (string)
-    // O frontend pode enviar { nome: 'Nome do Sensor' }
+    // --- Colunas de Texto (String / ILIKE) ---
     nome: 'a.nome',
+    fabricante: 'a.fabricante', // ✅ Adicionado
+    modelo: 'a.modelo',         // ✅ Adicionado (Corrige o seu problema principal)
+    faixa: 'a.faixa',           // ✅ Adicionado (Baseado no CSV)
+    precisao: 'a.precisao'      // ✅ Adicionado (Baseado no CSV)
 };
 
 /**

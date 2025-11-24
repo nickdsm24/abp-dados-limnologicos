@@ -543,7 +543,7 @@ const BalcarMap: React.FC = () => {
 
       <div className="flex-1 p-4 overflow-hidden" style={{ backgroundColor: "#FFFFFF" }}>
         <h1 className="text-3xl font-bold mb-4" style={{ color: colors.primary }}>
-          Mapa de Localizações - Projeto BALCAR
+          Mapa - Áreas de coleta de dados - Projeto BALCAR
         </h1>
         <MapContainer
           key={mapSettings.center.toString()}
