@@ -6,6 +6,10 @@ import cors from "cors";
 import { corsOptions } from "./configs/corsConfig";
 //import { corsOptions } from "./configs/corsConfig2";
 
+// --- REDIS: Inicializa a conexão ao importar o arquivo ---
+//import "./configs/redisClient";
+// --------------------------------------------------------
+
 // Carrega as variáveis de ambiente definidas no arquivo .env
 dotenv.config();
 
@@ -22,7 +26,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
 // Middleware para permitir o envio de dados em formato URL-encoded no corpo das requisições
-app.use(express.urlencoded({ extended: true }));
+//app.use(express.urlencoded({ extended: true }));
 
 // Rotas principais
 app.use("/api", router);

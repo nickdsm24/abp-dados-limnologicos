@@ -407,7 +407,7 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
       {/* O fundo do mapa permanece claro */}
       <div className="flex-1 p-4 overflow-hidden" style={{ backgroundColor: "#FFFFFF" }}>
         <h1 className="text-3xl font-bold mb-4" style={{ color: "#333333" }}>
-          Mapa de Monitoramento
+          Mapa - Áreas de Monitoramento - Projeto SIMA
         </h1>
 
         <MapContainer

@@ -176,4 +176,79 @@ export class SimaModel {
         // Retorna o primeiro registro "cru"
         return result.rows[0];
     }
+
+    /**
+     * Busca a lista de todas as estações cadastradas.
+     * Usado para preencher filtros no frontend.
+     */
+    public static async findAllStations() {
+        // Buscamos direto da tbestacao, que é leve e rápida.
+        // Ordenamos pelo rótulo para ficar alfabético no dropdown.
+        const query = `
+            SELECT idestacao, rotulo, lat, lng 
+            FROM tbestacao 
+            ORDER BY rotulo ASC
+        `;
+        
+        const result = await simaPool.query(query);
+        return result.rows;
+    }
+
+    /**
+     * Realiza a agregação de dados para gráficos.
+     * Agrupa por hora, dia ou mês e calcula médias/máximas/mínimas.
+     */
+    public static async getAnalyticsData(options: {
+        stationId: string | number;
+        startDate: string;
+        endDate: string;
+        granularity: 'hour' | 'day' | 'month';
+    }) {
+        const { stationId, startDate, endDate, granularity } = options;
+
+        // Validação de segurança para evitar injeção de SQL na granularidade
+        // Se alguém mandar 'drop table', cairá no 'day' por padrão.
+        const validGranularities = ['hour', 'day', 'month', 'year'];
+        const safeGranularity = validGranularities.includes(granularity) ? granularity : 'day';
+
+        // A Query Mágica
+        // 1. DATE_TRUNC: Arredonda a data (ex: 2016-12-03 14:35 -> 2016-12-03 00:00 se for 'day')
+        // 2. ROUND(AVG(...)): Calcula média e arredonda para 2 casas decimais
+        // 3. SUM(precipitacao): Chuva se soma, não se faz média
+        const query = `
+            SELECT 
+                to_char(DATE_TRUNC($1, datahora), 'YYYY-MM-DD"T"HH24:MI:SS') as label,
+                
+                -- Temperaturas (Médias, Máximas e Mínimas)
+                ROUND(AVG(tempar)::numeric, 2) as avg_tempar,
+                MAX(tempar) as max_tempar,
+                MIN(tempar) as min_tempar,
+                
+                ROUND(AVG(tempag1)::numeric, 2) as avg_temp_agua,
+                
+                -- Umidade e Pressão
+                ROUND(AVG(ur)::numeric, 2) as avg_ur,
+                ROUND(AVG(pressatm)::numeric, 2) as avg_pressao,
+                
+                -- Vento e Radiação
+                ROUND(AVG(intensvt)::numeric, 2) as avg_vento,
+                ROUND(AVG(radincid)::numeric, 2) as avg_radiacao,
+
+                -- Chuva (Soma acumulada no período)
+                COALESCE(SUM(precipitacao), 0) as total_chuva
+
+            FROM tbsima
+            WHERE 
+                idestacao = $2 
+                AND datahora >= $3 
+                AND datahora <= $4
+            GROUP BY 1
+            ORDER BY 1 ASC
+        `;
+
+        const values = [safeGranularity, stationId, startDate, endDate];
+        
+        const result = await simaPool.query(query, values);
+        return result.rows;
+    }
 }

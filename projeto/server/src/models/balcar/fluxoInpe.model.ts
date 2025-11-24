@@ -1,8 +1,7 @@
-import { balcarPool } from '../../configs/db'; // ATENÇÃO: Importa o balcarPool
+import { balcarPool } from '../../configs/db';
 import { FilterService } from '../../services/filterService';
 
-// Mapeia as chaves do frontend (ex: req.query) para as colunas reais
-// do banco de dados (com seus aliases).
+// Mapeia as chaves do frontend para as colunas reais do banco
 const fluxoInpeColumnMap = {
     // Chaves de Range (number, date)
     idfluxoinpe: 'a.idfluxoinpe',
@@ -31,18 +30,14 @@ const fluxoInpeColumnMap = {
     tsdfundo: 'a.tsdfundo',
 
     // Chaves de Igualdade (string)
-    // O frontend pode enviar { sitio: 'Nome do Sitio' } ou { campanha: 'Nro da Campanha' }
-    sitio: 'c.nome', // Mapeia a chave 'sitio' para 'c.nome'
-    campanha: 'b.nrocampanha', // Mapeia 'campanha' para 'b.nrocampanha'
+    sitio: 'c.nome', 
+    campanha: 'b.nrocampanha', 
 };
 
 /**
- * Constrói a query de listagem e contagem dinamicamente, aplicando filtros.
- * @param filters Um objeto (ex: req.query) com os filtros.
+ * Constrói a query de listagem e contagem dinamicamente.
  */
 const buildFluxoInpeQuery = (filters: any) => {
-    // Query base para selecionar os dados (a mesma do controller original)
-    // Usa os aliases 'sitio_nome', etc. para o DataFormatterService
     const baseQuery = `
         SELECT 
             a.idfluxoinpe, a.datamedida, a.ch4, a.batimetria, a.tempar,
@@ -59,8 +54,6 @@ const buildFluxoInpeQuery = (filters: any) => {
         LEFT JOIN tbsitio AS c ON a.idsitio = c.idsitio
     `;
 
-    // Query base para contagem (com os mesmos joins e filtros)
-    // ISSO CORRIGE O BUG DO CONTROLLER ANTIGO
     const countQuery = `
         SELECT COUNT(a.idfluxoinpe)
         FROM tbfluxoinpe AS a
@@ -68,95 +61,60 @@ const buildFluxoInpeQuery = (filters: any) => {
         LEFT JOIN tbsitio AS c ON a.idsitio = c.idsitio
     `;
 
-    // Usa o FilterService para construir a cláusula WHERE
     const { whereClause, params, nextIndex } = FilterService.buildFilter(
         filters,
         fluxoInpeColumnMap,
-        1, // Começa a contagem de parâmetros em $1
+        1
     );
 
-    const whereString = whereClause;
-    const values = params;
-    const paramIndex = nextIndex;
+    const mainQuery = `${baseQuery} ${whereClause} ORDER BY a.datamedida DESC, a.idfluxoinpe DESC`;
+    const countText = `${countQuery} ${whereClause}`;
 
-    // Query principal com ordenação (conforme controller original)
-    const mainQuery = `${baseQuery} ${whereString} ORDER BY a.datamedida DESC, a.idfluxoinpe DESC`;
-    // Query de contagem (sem ordenação)
-    const countText = `${countQuery} ${whereString}`;
-
-    return { mainQuery, countText, values, paramIndex };
+    return { mainQuery, countText, values: params, paramIndex: nextIndex };
 };
 
-/**
- * Classe Model para encapsular o acesso a dados da tbfluxoinpe (Balcar).
- */
 export class FluxoInpeModel {
     /**
-     * Busca uma lista paginada de registros, aplicando filtros.
-     * Retorna tanto os dados da página quanto a contagem total de registros.
+     * Busca lista paginada com filtros.
      */
-    public static async findPaginated(options: {
-        filters: any;
-        page: number;
-        limit: number;
-    }) {
+    public static async findPaginated(options: { filters: any; page: number; limit: number; }) {
         const { filters, page, limit } = options;
         const offset = (page - 1) * limit;
 
-        // 1. Constrói a query base com filtros
-        const { mainQuery, countText, values, paramIndex } =
-            buildFluxoInpeQuery(filters);
+        const { mainQuery, countText, values, paramIndex } = buildFluxoInpeQuery(filters);
 
-        // 2. Adiciona paginação à query
-        const paginatedQuery = `${mainQuery} LIMIT $${paramIndex} OFFSET $${
-            paramIndex + 1
-        }`;
+        const paginatedQuery = `${mainQuery} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
         const paginatedValues = [...values, limit, offset];
 
-        // 3. Executa a query de dados e a de contagem em paralelo
-        //    (Usa a contagem com filtros, corrigindo o COUNT(*) do controller antigo)
         const [result, countResult] = await Promise.all([
             balcarPool.query(paginatedQuery, paginatedValues),
             balcarPool.query(countText, values),
         ]);
 
-        const total = Number(countResult.rows[0].count);
-        
-        // Retorna os dados "crus" e a contagem
-        return { data: result.rows, total };
+        return { data: result.rows, total: Number(countResult.rows[0].count) };
     }
 
     /**
-     * Busca TODOS os registros que correspondem aos filtros, sem paginação.
-     * Ideal para exportações (range = 'all').
+     * Busca todos os registros (para exportação).
      */
-    public static async findAll(options: { filters: any }): Promise<any[]> {
+    public static async findAll(options: { filters: any }) {
         const { filters } = options;
-        
-        // 1. Constrói a query base (ignora contagem e paginação)
         const { mainQuery, values } = buildFluxoInpeQuery(filters);
-        
-        // 2. Executa a query
         const result = await balcarPool.query(mainQuery, values);
-        
-        // Retorna os dados "crus"
         return result.rows;
     }
 
     /**
-     * Busca um único registro pelo ID.
-     * (Segue o padrão dos exemplos, buscando dados mais ricos com join em reservatorio)
+     * Busca um registro por ID.
      */
-    public static async findById(id: number): Promise<any | null> {
+    public static async findById(id: number) {
         const result = await balcarPool.query(
             `
             SELECT 
-                a.*, -- Campos principais do tbfluxoinpe
-                b.idcampanha, b.nrocampanha,
-                b.datainicio AS campanha_datainicio, b.datafim AS campanha_datafim,
-                c.idsitio, c.nome AS sitio_nome,
-                c.lat AS sitio_lat, c.lng AS sitio_lng, c.descricao AS sitio_descricao,
-                d.idreservatorio, d.nome AS reservatorio_nome -- Join adicional
+                a.*,
+                b.idcampanha, b.nrocampanha, b.datainicio AS campanha_datainicio, b.datafim AS campanha_datafim,
+                c.idsitio, c.nome AS sitio_nome, c.lat AS sitio_lat, c.lng AS sitio_lng, c.descricao AS sitio_descricao,
+                d.idreservatorio, d.nome AS reservatorio_nome
             FROM tbfluxoinpe AS a
             LEFT JOIN tbcampanha AS b ON a.idcampanha = b.idcampanha
             LEFT JOIN tbsitio AS c ON a.idsitio = c.idsitio
@@ -166,11 +124,96 @@ export class FluxoInpeModel {
             [id]
         );
 
-        if (result.rows.length === 0) {
-            return null;
-        }
-        
-        // Retorna o primeiro registro "cru"
+        if (result.rows.length === 0) return null;
         return result.rows[0];
+    }
+
+    /**
+     * Realiza a agregação de dados para gráficos comparativos.
+     * Agrupa por Reservatório (Macro) ou Sítio (Micro).
+     */
+    public static async getAnalyticsData(options: {
+        metric: string;
+        groupBy: 'reservatorio' | 'sitio';
+        filterReservatorioId?: number;
+        campanhaId?: number;
+    }) {
+        const { metric, groupBy, filterReservatorioId, campanhaId } = options;
+
+        // 1. Whitelist de métricas permitidas (Segurança contra SQL Injection)
+        const allowedMetrics = [
+            'ch4', 'tempar', 'tempaguasubsuperficie', 'tempaguameio', 'tempaguafundo',
+            'phsubsuperficie', 'phmeio', 'phfundo',
+            'orpsubsuperficie', 'condutividadesubsuperficie', 
+            'odsubsuperficie', 'batimetria', 'tsdsubsuperficie'
+        ];
+        
+        if (!allowedMetrics.includes(metric)) {
+            throw new Error(`Métrica inválida ou não permitida para análise: ${metric}`);
+        }
+
+        // 2. Construção da Query
+        let selectLabel = '';
+        let groupByClause = '';
+        let whereClauses: string[] = [];
+        let params: any[] = [];
+        let paramCounter = 1;
+
+        // Base Joins: Sempre fazemos todos os joins para garantir acesso aos nomes
+        const joinClause = `
+            LEFT JOIN tbcampanha b ON a.idcampanha = b.idcampanha 
+            LEFT JOIN tbreservatorio r ON b.idreservatorio = r.idreservatorio 
+            LEFT JOIN tbsitio s ON a.idsitio = s.idsitio 
+        `;
+
+        if (groupBy === 'reservatorio') {
+            // Agrupar por Reservatório
+            selectLabel = 'r.nome AS label, r.idreservatorio AS id';
+            groupByClause = 'GROUP BY r.idreservatorio, r.nome';
+        } else {
+            // Agrupar por Sítio
+            selectLabel = 's.nome AS label, s.idsitio AS id';
+            groupByClause = 'GROUP BY s.idsitio, s.nome';
+        }
+
+        // 3. Filtros
+
+        // Filtro de Drill-down (Ex: ver apenas sítios do Reservatório de Furnas)
+        if (filterReservatorioId) {
+            whereClauses.push(`r.idreservatorio = $${paramCounter++}`);
+            params.push(filterReservatorioId);
+        }
+
+        // Filtro de Campanha (Ex: Apenas Campanha 1)
+        if (campanhaId) {
+            whereClauses.push(`b.idcampanha = $${paramCounter++}`);
+            params.push(campanhaId);
+        }
+
+        // Filtro essencial: Ignorar nulos na métrica escolhida para não distorcer a média
+        whereClauses.push(`a.${metric} IS NOT NULL`);
+
+        const whereString = whereClauses.length > 0 
+            ? 'WHERE ' + whereClauses.join(' AND ') 
+            : '';
+
+        // 4. Montagem Final
+        const query = `
+            SELECT 
+                ${selectLabel},
+                ROUND(AVG(a.${metric})::numeric, 2) as media,
+                ROUND(STDDEV(a.${metric})::numeric, 2) as desvio_padrao,
+                MIN(a.${metric}) as minimo,
+                MAX(a.${metric}) as maximo,
+                COUNT(a.${metric}) as contagem
+            FROM tbfluxoinpe a
+            ${joinClause}
+            ${whereString}
+            ${groupByClause}
+            ORDER BY label ASC
+        `;
+
+        const result = await balcarPool.query(query, params);
+        return result.rows;
     }
 }
