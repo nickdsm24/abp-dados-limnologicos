@@ -21,7 +21,6 @@ export const getAll = async (req: Request, res: Response): Promise<void> => {
     const limit = parseInt(req.query.limit as string) || PAGE_SIZE;
 
     // 1. Pede os dados paginados ao Model, passando os filtros
-    // ✅ MUDANÇA AQUI: Passa req.query para o model aplicar os filtros
     const { data: rawData, total } = await ConcentracaoGasAguaModel.findPaginated({
       filters: req.query,
       page,
@@ -29,10 +28,9 @@ export const getAll = async (req: Request, res: Response): Promise<void> => {
     });
 
     // 2. Formata os dados "crus" usando o Service global
-    // ✅ MUDANÇA AQUI: Usa o DataFormatterService
     const data = rawData.map(DataFormatterService.formatListRow);
 
-    // 3. Envia a resposta (sem mudança na estrutura)
+    // 3. Envia a resposta
     res.status(200).json({
       success: true,
       page,
@@ -82,7 +80,6 @@ export const getById = async (req: Request, res: Response): Promise<void> => {
     }
 
     // 3. Formata o dado "cru"
-    // ✅ MUDANÇA AQUI: Conforme o exemplo, o getById retorna os dados crus do model
     const data = rawData; 
 
     // 4. Envia a resposta
@@ -105,11 +102,10 @@ export const getById = async (req: Request, res: Response): Promise<void> => {
 /**
  * Endpoint: exportData
  * Exporta dados em CSV ou XLSX com base nos filtros.
- * ✅ NOVO ENDPOINT ADICIONADO
  */
 export const exportData = async (req: Request, res: Response): Promise<void> => {
   try {
-    // 1. Extrai opções do body (igual ao exemplo)
+    // 1. Extrai opções do body
     const { format, range, includeHeaders, delimiter, encoding, filters, page, limit } =
       req.body as ExportFileOptions & {
         range: 'page' | 'all';
@@ -128,7 +124,6 @@ export const exportData = async (req: Request, res: Response): Promise<void> => 
     let rawData: any[];
 
     // 2. Busca os dados no Model com base no 'range'
-    // ✅ MUDANÇA AQUI: Usa ConcentracaoGasAguaModel
     if (range === 'page') {
       const { data } = await ConcentracaoGasAguaModel.findPaginated({
         filters: filters || {},
@@ -144,14 +139,12 @@ export const exportData = async (req: Request, res: Response): Promise<void> => 
     }
 
     // 3. Formata os dados para "lista"
-    // ✅ MUDANÇA AQUI: Usa o DataFormatterService
     const formattedData = rawData.map(DataFormatterService.formatListRow);
 
-    // 4. Gera o buffer do arquivo (igual ao exemplo)
+    // 4. Gera o buffer do arquivo
     const fileBuffer = await ExportService.generateExportFile(formattedData, exportOptions);
 
     // 5. Define os headers da resposta
-    // ✅ MUDANÇA AQUI: Altera o nome do arquivo
     const fileName = `export_concentracao_gas_agua_${new Date().toISOString().slice(0, 10)}.${format}`;
 
     if (format === 'xlsx') {
@@ -164,7 +157,7 @@ export const exportData = async (req: Request, res: Response): Promise<void> => 
     }
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
 
-    // 6. Envia o buffer como resposta (igual ao exemplo)
+    // 6. Envia o buffer como resposta
     res.send(fileBuffer);
   } catch (error: any) {
     logger.error('Erro ao exportar dados de tbconcentracaogasagua', {
@@ -174,6 +167,69 @@ export const exportData = async (req: Request, res: Response): Promise<void> => 
     res.status(500).json({
       success: false,
       error: 'Erro ao gerar exportação.',
+    });
+  }
+};
+
+/**
+ * --- NOVO ENDPOINT DE ANALYTICS ---
+ * Endpoint: getAnalytics
+ * Retorna estatísticas agrupadas por Reservatório ou Sítio.
+ * Query Params: metric (obrigatório), groupBy (obrigatório), filterReservatorioId
+ */
+export const getAnalytics = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { metric, groupBy, filterReservatorioId } = req.query;
+
+    // 1. Validações Básicas
+    if (!metric) {
+      res.status(400).json({ 
+        success: false, 
+        error: "Parâmetro 'metric' é obrigatório." 
+      });
+      return;
+    }
+
+    if (groupBy !== 'reservatorio' && groupBy !== 'sitio') {
+      res.status(400).json({ 
+        success: false, 
+        error: "Parâmetro 'groupBy' deve ser 'reservatorio' ou 'sitio'." 
+      });
+      return;
+    }
+
+    // 2. Chama o Model de Agregação
+    const data = await ConcentracaoGasAguaModel.getAnalyticsData({
+      metric: metric as string,
+      groupBy: groupBy as 'reservatorio' | 'sitio',
+      filterReservatorioId: filterReservatorioId ? Number(filterReservatorioId) : undefined
+    });
+
+    // 3. Retorna o JSON otimizado
+    res.status(200).json({
+      success: true,
+      groupBy,
+      metric,
+      totalGroups: data.length,
+      data
+    });
+
+  } catch (error: any) {
+    logger.error("Erro ao gerar analytics de Concentração Gás Água", {
+      message: error.message,
+      stack: error.stack,
+      query: req.query
+    });
+
+    // Se for erro de métrica inválida (lançado pelo model), retorna 400
+    if (error.message && error.message.includes("Métrica inválida")) {
+      res.status(400).json({ success: false, error: error.message });
+      return;
+    }
+
+    res.status(500).json({
+      success: false,
+      error: "Erro ao processar dados analíticos.",
     });
   }
 };

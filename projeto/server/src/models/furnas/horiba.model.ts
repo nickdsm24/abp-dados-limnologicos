@@ -163,4 +163,102 @@ export class HoribaModel {
     // Retorna o primeiro registro "cru"
     return result.rows[0];
   }
+
+  /**
+   * --- NOVO MÉTODO PARA ANALYTICS (GRÁFICOS) ---
+   * Calcula estatísticas (Média, Min, Max, Desvio Padrão) agrupadas por Reservatório ou Sítio.
+   */
+  public static async getAnalyticsData(options: {
+    metric: string;
+    groupBy: 'reservatorio' | 'sitio';
+    filterReservatorioId?: number;
+  }) {
+    const { metric, groupBy, filterReservatorioId } = options;
+
+    // 1. Mapeamento de métricas (Input Frontend -> Coluna Banco)
+    // Isso garante que se o front mandar "DO" ou "tempAgua", usamos a coluna correta.
+    const metricToColumn: Record<string, string> = {
+        'profundidade': 'profundidade',
+        'tempAgua': 'tempagua',
+        'tempagua': 'tempagua', // fallback lowercase
+        'condutividade': 'condutividade',
+        'pH': 'ph',
+        'ph': 'ph', // fallback lowercase
+        'DO': '_do',
+        '_do': '_do', // fallback
+        'TDS': 'tds',
+        'tds': 'tds', // fallback lowercase
+        'redox': 'redox',
+        'turbidez': 'turbidez'
+    };
+
+    // Validação da métrica
+    if (!metricToColumn.hasOwnProperty(metric)) {
+        throw new Error(`Métrica inválida ou não permitida para análise: ${metric}`);
+    }
+
+    const column = metricToColumn[metric];
+
+    // 2. Construção da Query Dinâmica
+    let selectLabel = '';
+    let groupByClause = '';
+    let whereClauses: string[] = [];
+    let params: any[] = [];
+    let paramCounter = 1;
+
+    // Joins necessários para conectar Horiba -> Sítio, Campanha -> Reservatório
+    // a: tbhoriba
+    // b: tbsitio
+    // c: tbcampanha
+    // d: tbreservatorio
+    const joinClause = `
+        LEFT JOIN tbsitio b ON a.idSitio = b.idSitio
+        LEFT JOIN tbcampanha c ON a.idCampanha = c.idCampanha
+        LEFT JOIN tbreservatorio d ON c.idReservatorio = d.idReservatorio
+    `;
+
+    if (groupBy === 'reservatorio') {
+        // Agrupar por Reservatório (Visão Macro)
+        selectLabel = 'd.nome AS label, d.idreservatorio AS id';
+        groupByClause = 'GROUP BY d.idreservatorio, d.nome';
+    } else {
+        // Agrupar por Sítio (Visão Micro/Drill-down)
+        selectLabel = 'b.nome AS label, b.idsitio AS id';
+        groupByClause = 'GROUP BY b.idsitio, b.nome';
+    }
+
+    // 3. Filtros
+    
+    // Filtro de Drill-down (Ex: ver apenas sítios de um reservatório específico)
+    if (filterReservatorioId) {
+        whereClauses.push(`d.idreservatorio = $${paramCounter++}`);
+        params.push(filterReservatorioId);
+    }
+
+    // Filtro essencial: Ignorar nulos na métrica escolhida
+    whereClauses.push(`a.${column} IS NOT NULL`);
+
+    const whereString = whereClauses.length > 0 
+        ? 'WHERE ' + whereClauses.join(' AND ') 
+        : '';
+
+    // 4. Montagem Final da Query
+    const query = `
+        SELECT 
+            ${selectLabel},
+            ROUND(AVG(a.${column})::numeric, 2) as media,
+            ROUND(STDDEV(a.${column})::numeric, 2) as desvio_padrao,
+            MIN(a.${column}) as minimo,
+            MAX(a.${column}) as maximo,
+            COUNT(a.${column}) as contagem
+        FROM tbhoriba a
+        ${joinClause}
+        ${whereString}
+        ${groupByClause}
+        ORDER BY label ASC
+    `;
+
+    const result = await furnasPool.query(query, params);
+    return result.rows;
+  }
 }

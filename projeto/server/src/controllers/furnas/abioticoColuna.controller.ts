@@ -4,7 +4,7 @@ import { logger } from "../../configs/logger";
 // 1. Importa os Serviços (formatação e exportação)
 import { DataFormatterService } from "../../services/dataFormatterService";
 import { ExportService, ExportFileOptions } from "../../services/exportService";
-// 2. Importa o Model (sem mudança)
+// 2. Importa o Model
 import { AbioticoColunaModel } from "../../models/furnas/abioticoColuna.model";
 
 const PAGE_SIZE = Number(process.env.PAGE_SIZE) || 10;
@@ -19,7 +19,7 @@ export const getAll = async (req: Request, res: Response): Promise<void> => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || PAGE_SIZE;
 
-    // 1. Pede os dados paginados ao Model (sem mudança)
+    // 1. Pede os dados paginados ao Model
     const { data: rawData, total } = await AbioticoColunaModel.findPaginated({
       filters: req.query,
       page,
@@ -27,10 +27,9 @@ export const getAll = async (req: Request, res: Response): Promise<void> => {
     });
 
     // 2. Formata os dados "crus" usando o Service
-    // ✅ MUDANÇA AQUI: Usa o novo método genérico
     const data = rawData.map(DataFormatterService.formatListRow);
 
-    // 3. Envia a resposta (sem mudança)
+    // 3. Envia a resposta
     res.status(200).json({
       success: true,
       page,
@@ -66,10 +65,10 @@ export const getById = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // 1. Pede o dado ao Model (sem mudança)
+    // 1. Pede o dado ao Model
     const rawData = await AbioticoColunaModel.findById(idAbioticoColuna);
 
-    // 2. Verifica se foi encontrado (sem mudança)
+    // 2. Verifica se foi encontrado
     if (!rawData) {
       res.status(404).json({
         success: false,
@@ -79,10 +78,9 @@ export const getById = async (req: Request, res: Response): Promise<void> => {
     }
 
     // 3. Formata o dado "cru"
-    // ✅ MUDANÇA AQUI: Removemos a formatação de detalhe
     const data = rawData; // Retorna os dados crus do model
 
-    // 4. Envia a resposta (sem mudança)
+    // 4. Envia a resposta
     res.status(200).json({
       success: true,
       data,
@@ -104,7 +102,7 @@ export const getById = async (req: Request, res: Response): Promise<void> => {
  */
 export const exportData = async (req: Request, res: Response): Promise<void> => {
   try {
-    // 1. Extrai opções do body (sem mudança)
+    // 1. Extrai opções do body
     const { format, range, includeHeaders, delimiter, encoding, filters, page, limit } =
       req.body as ExportFileOptions & {
         range: "page" | "all";
@@ -113,7 +111,7 @@ export const exportData = async (req: Request, res: Response): Promise<void> => 
         limit?: number;
       };
 
-    // Opções para o ExportService (sem mudança)
+    // Opções para o ExportService
     const exportOptions: ExportFileOptions = {
       format,
       includeHeaders,
@@ -123,7 +121,7 @@ export const exportData = async (req: Request, res: Response): Promise<void> => 
 
     let rawData: any[];
 
-    // 2. Busca os dados no Model com base no 'range' (sem mudança)
+    // 2. Busca os dados no Model com base no 'range'
     if (range === "page") {
       const { data } = await AbioticoColunaModel.findPaginated({
         filters: filters || {},
@@ -139,13 +137,12 @@ export const exportData = async (req: Request, res: Response): Promise<void> => 
     }
 
     // 3. Formata os dados para "lista"
-    // ✅ MUDANÇA AQUI: Usa o novo método genérico
     const formattedData = rawData.map(DataFormatterService.formatListRow);
 
-    // 4. Gera o buffer do arquivo (sem mudança)
+    // 4. Gera o buffer do arquivo
     const fileBuffer = await ExportService.generateExportFile(formattedData, exportOptions);
 
-    // 5. Define os headers da resposta (sem mudança)
+    // 5. Define os headers da resposta
     const fileName = `export_abiotico_coluna_${new Date().toISOString().slice(0, 10)}.${format}`;
 
     if (format === "xlsx") {
@@ -158,7 +155,7 @@ export const exportData = async (req: Request, res: Response): Promise<void> => 
     }
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
 
-    // 6. Envia o buffer como resposta (sem mudança)
+    // 6. Envia o buffer como resposta
     res.send(fileBuffer);
   } catch (error: any) {
     logger.error("Erro ao exportar dados de tbabioticocoluna", {
@@ -168,6 +165,69 @@ export const exportData = async (req: Request, res: Response): Promise<void> => 
     res.status(500).json({
       success: false,
       error: "Erro ao gerar exportação.",
+    });
+  }
+};
+
+/**
+ * --- NOVO ENDPOINT DE ANALYTICS ---
+ * Endpoint: getAnalytics
+ * Retorna estatísticas agrupadas por Reservatório ou Sítio.
+ * Query Params: metric (obrigatório), groupBy (obrigatório), filterReservatorioId
+ */
+export const getAnalytics = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { metric, groupBy, filterReservatorioId } = req.query;
+
+    // 1. Validações Básicas
+    if (!metric) {
+      res.status(400).json({ 
+        success: false, 
+        error: "Parâmetro 'metric' é obrigatório." 
+      });
+      return;
+    }
+
+    if (groupBy !== 'reservatorio' && groupBy !== 'sitio') {
+      res.status(400).json({ 
+        success: false, 
+        error: "Parâmetro 'groupBy' deve ser 'reservatorio' ou 'sitio'." 
+      });
+      return;
+    }
+
+    // 2. Chama o Model de Agregação
+    const data = await AbioticoColunaModel.getAnalyticsData({
+      metric: metric as string,
+      groupBy: groupBy as 'reservatorio' | 'sitio',
+      filterReservatorioId: filterReservatorioId ? Number(filterReservatorioId) : undefined
+    });
+
+    // 3. Retorna o JSON otimizado
+    res.status(200).json({
+      success: true,
+      groupBy,
+      metric,
+      totalGroups: data.length,
+      data
+    });
+
+  } catch (error: any) {
+    logger.error("Erro ao gerar analytics de Abiótico Coluna", {
+      message: error.message,
+      stack: error.stack,
+      query: req.query
+    });
+
+    // Se for erro de métrica inválida (lançado pelo model), retorna 400
+    if (error.message && error.message.includes("Métrica inválida")) {
+      res.status(400).json({ success: false, error: error.message });
+      return;
+    }
+
+    res.status(500).json({
+      success: false,
+      error: "Erro ao processar dados analíticos.",
     });
   }
 };

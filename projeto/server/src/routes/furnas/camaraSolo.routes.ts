@@ -1,11 +1,12 @@
 import { Router } from "express";
-import { getAll, getById, exportData } from "../../controllers/furnas/camaraSolo.controller";
+import { getAll, getById, exportData, getAnalytics } from "../../controllers/furnas/camaraSolo.controller";
 
 const router = Router();
 
 router.get("/all", getAll);
 router.get("/:id", getById);
 router.post("/export", exportData);
+router.get("/graph/analytics", getAnalytics);
 
 
 export default router;

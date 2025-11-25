@@ -4,6 +4,7 @@ import {
 	getAll,
 	getById,
 	exportData,
+	getAnalytics
 } from "../../controllers/furnas/abioticoColuna.controller";
 //import { cacheMiddleware } from "../../middlewares/cacheMiddleware";
 
@@ -17,5 +18,6 @@ router.get("/:idabioticocoluna", getById);
 
 // 2. Adiciona a nova rota de exportação (usando POST)
 router.post("/export", exportData);
+router.get("/graph/analytics", getAnalytics);
 
 export default router;

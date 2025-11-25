@@ -45,7 +45,7 @@ router.use("/sitio", sitio);
 router.use("/campanha-por-tabela", campanhaPT);
 router.use("/carbono", carbono);
 router.use("/campo-por-tabela", campoPT);
-router.use("/concentracao-gas-agua", concentracaoGA);
+router.use("/concenctracao-gas-agua", concentracaoGA);
 router.use("/concentracao-gas-sedimento", concentracaoGS);
 router.use("/dados-precipitacao", dadosPrecipitacao);
 router.use("/dados-represa", dadosRepresa);

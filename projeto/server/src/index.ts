@@ -3,8 +3,8 @@ import dotenv from "dotenv";
 import router from "./routes";
 import { errorHandler } from "./middlewares/errorHandler";
 import cors from "cors";
-//import { corsOptions } from "./configs/corsConfig";
-import { corsOptions } from "./configs/corsConfig2";
+import { corsOptions } from "./configs/corsConfig";
+//import { corsOptions } from "./configs/corsConfig2";
 
 // --- REDIS: Inicializa a conexão ao importar o arquivo ---
 //import "./configs/redisClient";
