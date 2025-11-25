@@ -27,31 +27,31 @@ const buildAbioticoSuperficieQuery = (filters: any) => {
   // Query base para selecionar os dados (para a listagem)
   // Esta query traz os campos brutos necessários para o formatListRow
   const baseQuery = `
-SELECT 
-a.idabioticosuperficie,
-a.idcampanha,
-a.idsitio,
-a.datamedida,
-a.horamedida,
-a.dic,
-a.nt,
-a.pt,
-a.delta13c,
-a.delta15n,
-b.nrocampanha,
-c.nome AS sitio_nome
-FROM tbabioticosuperficie AS a
-LEFT JOIN tbcampanha AS b ON a.idcampanha = b.idcampanha
-LEFT JOIN tbsitio AS c ON a.idsitio = c.idsitio
-`;
+    SELECT 
+        a.idabioticosuperficie,
+        a.idcampanha,
+        a.idsitio,
+        a.datamedida,
+        a.horamedida,
+        a.dic,
+        a.nt,
+        a.pt,
+        a.delta13c,
+        a.delta15n,
+        b.nrocampanha,
+        c.nome AS sitio_nome
+    FROM tbabioticosuperficie AS a
+    LEFT JOIN tbcampanha AS b ON a.idcampanha = b.idcampanha
+    LEFT JOIN tbsitio AS c ON a.idsitio = c.idsitio
+  `;
 
   // Query base para contagem (deve ter os mesmos JOINS e FILTROS)
   const countQuery = `
-SELECT COUNT(a.idabioticosuperficie)
-FROM tbabioticosuperficie AS a
-LEFT JOIN tbcampanha AS b ON a.idcampanha = b.idcampanha
-LEFT JOIN tbsitio AS c ON a.idsitio = c.idsitio
-`;
+    SELECT COUNT(a.idabioticosuperficie)
+    FROM tbabioticosuperficie AS a
+    LEFT JOIN tbcampanha AS b ON a.idcampanha = b.idcampanha
+    LEFT JOIN tbsitio AS c ON a.idsitio = c.idsitio
+  `;
 
   // Usa o FilterService para construir a cláusula WHERE
   const { whereClause, params, nextIndex } = FilterService.buildFilter(
@@ -94,7 +94,6 @@ export class AbioticoSuperficieModel {
     const paginatedValues = [...values, limit, offset];
 
     // 3. Executa a query de dados e a de contagem em paralelo
-    //    (Corrigido: a contagem agora usa os filtros)
     const [result, countResult] = await Promise.all([
       furnasPool.query(paginatedQuery, paginatedValues),
       furnasPool.query(countText, values), // Contagem total com filtros
@@ -121,31 +120,31 @@ export class AbioticoSuperficieModel {
    * Busca um único registro pelo ID, com todos os joins necessários.
    */
   public static async findById(id: number): Promise<any | null> {
-    // Query de detalhe completa (padrão abioticoColuna)
+    // Query de detalhe completa
     const result = await furnasPool.query(
       `
-SELECT 
-a.*,
-b.idcampanha,
-b.nrocampanha,
-b.datainicio AS campanha_datainicio,
-b.datafim AS campanha_datafim,
-b.idreservatorio,
-c.idsitio,
-c.nome AS sitio_nome,
-c.descricao AS sitio_descricao,
-c.lat AS sitio_lat,
-	  c.lng AS sitio_lng,
-	  d.nome AS reservatorio_nome
-	  FROM tbabioticosuperficie AS a
-	  LEFT JOIN tbcampanha AS b
-	    ON a.idcampanha = b.idcampanha
-	  LEFT JOIN tbsitio AS c
-	    ON a.idsitio = c.idsitio
-	  LEFT JOIN tbreservatorio AS d
-	    ON b.idreservatorio = d.idreservatorio
-	  WHERE a.idabioticosuperficie = $1
-	`,
+      SELECT 
+        a.*,
+        b.idcampanha,
+        b.nrocampanha,
+        b.datainicio AS campanha_datainicio,
+        b.datafim AS campanha_datafim,
+        b.idreservatorio,
+        c.idsitio,
+        c.nome AS sitio_nome,
+        c.descricao AS sitio_descricao,
+        c.lat AS sitio_lat,
+        c.lng AS sitio_lng,
+        d.nome AS reservatorio_nome
+      FROM tbabioticosuperficie AS a
+      LEFT JOIN tbcampanha AS b
+        ON a.idcampanha = b.idcampanha
+      LEFT JOIN tbsitio AS c
+        ON a.idsitio = c.idsitio
+      LEFT JOIN tbreservatorio AS d
+        ON b.idreservatorio = d.idreservatorio
+      WHERE a.idabioticosuperficie = $1
+      `,
       [id],
     );
 
@@ -154,5 +153,91 @@ c.lat AS sitio_lat,
     }
 
     return result.rows[0];
+  }
+
+  /**
+   * --- NOVO MÉTODO PARA ANALYTICS (GRÁFICOS) ---
+   * Calcula estatísticas (Média, Min, Max, Desvio Padrão) agrupadas por Reservatório ou Sítio.
+   */
+  public static async getAnalyticsData(options: {
+    metric: string;
+    groupBy: 'reservatorio' | 'sitio';
+    filterReservatorioId?: number;
+  }) {
+    const { metric, groupBy, filterReservatorioId } = options;
+
+    // 1. Whitelist de métricas permitidas (Segurança contra SQL Injection)
+    const allowedMetrics = [
+        'dic', 'nt', 'pt', 
+        'delta13c', 'delta15n'
+    ];
+    
+    if (!allowedMetrics.includes(metric)) {
+        throw new Error(`Métrica inválida ou não permitida para análise: ${metric}`);
+    }
+
+    // 2. Construção da Query Dinâmica
+    let selectLabel = '';
+    let groupByClause = '';
+    let whereClauses: string[] = [];
+    let params: any[] = [];
+    let paramCounter = 1;
+
+    // Joins necessários para conectar Abiotico -> Campanha -> Reservatório e Abiotico -> Sítio
+    // a: tbabioticosuperficie
+    // b: tbcampanha
+    // c: tbsitio
+    // d: tbreservatorio
+    const joinClause = `
+        LEFT JOIN tbcampanha b ON a.idcampanha = b.idcampanha
+        LEFT JOIN tbsitio c ON a.idsitio = c.idsitio
+        LEFT JOIN tbreservatorio d ON b.idreservatorio = d.idreservatorio
+    `;
+
+    if (groupBy === 'reservatorio') {
+        // Agrupar por Reservatório (Visão Macro)
+        // d.nome vem de tbreservatorio (ligado via tbcampanha b)
+        selectLabel = 'd.nome AS label, d.idreservatorio AS id';
+        groupByClause = 'GROUP BY d.idreservatorio, d.nome';
+    } else {
+        // Agrupar por Sítio (Visão Micro/Drill-down)
+        // c.nome vem de tbsitio (ligado direto em a)
+        selectLabel = 'c.nome AS label, c.idsitio AS id';
+        groupByClause = 'GROUP BY c.idsitio, c.nome';
+    }
+
+    // 3. Filtros
+    
+    // Filtro de Drill-down (Ex: ver apenas sítios de um reservatório específico)
+    if (filterReservatorioId) {
+        whereClauses.push(`d.idreservatorio = $${paramCounter++}`);
+        params.push(filterReservatorioId);
+    }
+
+    // Filtro essencial: Ignorar nulos na métrica escolhida
+    whereClauses.push(`a.${metric} IS NOT NULL`);
+
+    const whereString = whereClauses.length > 0 
+        ? 'WHERE ' + whereClauses.join(' AND ') 
+        : '';
+
+    // 4. Montagem Final da Query
+    const query = `
+        SELECT 
+            ${selectLabel},
+            ROUND(AVG(a.${metric})::numeric, 2) as media,
+            ROUND(STDDEV(a.${metric})::numeric, 2) as desvio_padrao,
+            MIN(a.${metric}) as minimo,
+            MAX(a.${metric}) as maximo,
+            COUNT(a.${metric}) as contagem
+        FROM tbabioticosuperficie a
+        ${joinClause}
+        ${whereString}
+        ${groupByClause}
+        ORDER BY label ASC
+    `;
+
+    const result = await furnasPool.query(query, params);
+    return result.rows;
   }
 }

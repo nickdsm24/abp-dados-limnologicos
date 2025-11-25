@@ -1,9 +1,8 @@
 //src/components/commons/TableMenu
 import { useMemo } from "react";
-// 1. Ícones atualizados: 'Zap' removido, 'Table2' (ou 'Table') adicionado
-import { Database, Table2 } from "lucide-react";
-// 2. Importar o tipo 'DatabaseName' para a nova prop
-import type { DatabaseName } from "../../types/types"; // Ajuste o caminho se necessário
+// Adicionamos 'X' para o botão de fechar
+import { Database, Table2, X } from "lucide-react";
+import type { DatabaseName } from "../../types/types";
 
 interface TabelaDisponivel {
   label: string;
@@ -15,12 +14,21 @@ interface MenuProps {
   tabelas: TabelaDisponivel[];
   tabelaAtiva: string | null;
   onSelectTabela: (value: string) => void;
-  // 3. Adicionada nova prop 'database' para dinamizar o conteúdo
   database: DatabaseName;
+  // NOVAS PROPS PARA RESPONSIVIDADE
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-export function Menu({ title, tabelas, tabelaAtiva, onSelectTabela, database }: MenuProps) {
-  // 4. Lógica para formatar o nome do banco (ex: 'furnas' -> 'Furnas')
+export function Menu({
+  title,
+  tabelas,
+  tabelaAtiva,
+  onSelectTabela,
+  database,
+  isOpen,
+  onClose,
+}: MenuProps) {
   const databaseDisplayName = useMemo(() => {
     switch (database) {
       case "furnas":
@@ -30,58 +38,89 @@ export function Menu({ title, tabelas, tabelaAtiva, onSelectTabela, database }: 
       case "sima":
         return "Sima";
       default:
-        return "Database"; // Fallback
+        return "Database";
     }
   }, [database]);
 
   return (
-    // 5. Cor de fundo atualizada para #2d3748
-    <aside className="w-64 text-white flex flex-col" style={{
-        background: "linear-gradient(to bottom, #2f2f2f, #3a3a3a, #4b4b4b)",
-      }}>
-      {/* 6. Cabeçalho do Menu (Marca) agora é dinâmico */}
-      <div className="flex items-center justify-center h-20 border-b border-white/20">
-        {/* Ícone 'Zap' trocado por 'Database' */}
-        <Database className="h-8 w-8 mr-2" />
-        {/* Título 'FurnasData' agora é dinâmico (ex: 'SimaData') */}
-        <h1 className="text-2xl font-bold">{databaseDisplayName}Data</h1>
-      </div>
+    <>
+      {/* 1. OVERLAY (Apenas Mobile) */}
+      <div
+        className={`fixed inset-0 bg-black/50 z-30 transition-opacity duration-300 md:hidden ${
+          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
 
-      {/* Título da Seção (ex: "Dados Sima") - Lógica mantida */}
-      {title && (
-        <div className="px-4 pt-6 pb-2">
-          <h3 className="text-sm font-semibold uppercase text-gray-300 tracking-wider">{title}</h3>
+      {/* 2. SIDEBAR COM CLASSES RESPONSIVAS */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 w-64 text-white flex flex-col transition-transform duration-300 ease-in-out md:static md:translate-x-0 ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+        style={{
+          background: "linear-gradient(to bottom, #2f2f2f, #3a3a3a, #4b4b4b)",
+        }}
+      >
+        {/* Cabeçalho do Menu */}
+        <div className="flex items-center justify-between px-4 h-20 border-b border-white/20">
+          <div className="flex items-center">
+            <Database className="h-8 w-8 mr-2" />
+            <h1 className="text-2xl font-bold">{databaseDisplayName}Data</h1>
+          </div>
+          {/* Botão Fechar (Apenas Mobile) */}
+          <button onClick={onClose} className="md:hidden text-gray-300 hover:text-white">
+            <X className="w-6 h-6" />
+          </button>
         </div>
-      )}
 
-      {/* Lista de Itens do Menu */}
-      {/* 4. Ajustamos o padding e ADICIONAMOS overflow-y-auto */}
-      <nav className={`flex-1 px-4 space-y-2 overflow-y-auto ${title ? "py-4" : "py-6"}`}>
-        {tabelas.map((tabela) => {
-          const isAtivo = tabela.value === tabelaAtiva;
-          return (
-            <button
-              key={tabela.value}
-              onClick={() => onSelectTabela(tabela.value)}
-              className={`
-                 w-full flex items-center px-4 py-3 text-left text-sm font-medium rounded-lg transition-colors duration-200
-                 ${isAtivo
-                  ? "bg-white/20 text-white"
-                  : "text-gray-200 hover:bg-white/10 hover:text-white"}
-                `}>
-              <Table2 className="h-5 w-5 mr-3 flex-shrink-0" />
-              <span className="truncate">{tabela.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+        {/* Título da Seção */}
+        {title && (
+          <div className="px-4 pt-6 pb-2">
+            <h3 className="text-sm font-semibold uppercase text-gray-300 tracking-wider">
+              {title}
+            </h3>
+          </div>
+        )}
 
-      {/* 8. Rodapé do Menu agora é dinâmico */}
-      <div className="p-4 border-t border-white/20 text-center text-xs text-gray-300">
-        <p>
-          &copy; {new Date().getFullYear()} - Projeto {databaseDisplayName}
-        </p>
-      </div>
-    </aside>
+        {/* Lista de Itens */}
+        <nav
+          className={`flex-1 px-4 space-y-2 overflow-y-auto ${
+            title ? "py-4" : "py-6"
+          }`}
+        >
+          {tabelas.map((tabela) => {
+            const isAtivo = tabela.value === tabelaAtiva;
+            return (
+              <button
+                key={tabela.value}
+                onClick={() => {
+                  onSelectTabela(tabela.value);
+                  onClose(); // Fecha o menu ao selecionar no mobile
+                }}
+                className={`
+                  w-full flex items-center px-4 py-3 text-left text-sm font-medium rounded-lg transition-colors duration-200
+                  ${
+                    isAtivo
+                      ? "bg-white/20 text-white"
+                      : "text-gray-200 hover:bg-white/10 hover:text-white"
+                  }
+                `}
+              >
+                <Table2 className="h-5 w-5 mr-3 flex-shrink-0" />
+                <span className="truncate">{tabela.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Rodapé */}
+        <div className="p-4 border-t border-white/20 text-center text-xs text-gray-300">
+          <p>
+            &copy; {new Date().getFullYear()} - Projeto {databaseDisplayName}
+          </p>
+        </div>
+      </aside>
+    </>
   );
 }

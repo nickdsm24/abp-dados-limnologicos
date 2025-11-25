@@ -10,14 +10,14 @@ import {
   Clock,
   Hash,
   Type as IconType,
-  Filter, // Ícone trocado, mais relevante
+  Filter,
 } from "lucide-react";
 import type { 
   FilterParams, 
   ColumnInfo, 
   ColumnType,
-  DatabaseName // ✅ Importa o tipo
-} from "../../types/types"; // Ajuste o caminho
+  DatabaseName 
+} from "../../types/types"; // Caminho mantido conforme original
 
 // --- Definições dos Temas ---
 
@@ -66,14 +66,13 @@ const themes = {
   }
 };
 
-// Define o tipo para o nosso objeto de tema
 type ThemeType = typeof themes.furnas;
 type ThemeName = keyof typeof themes;
 
 // --- Interfaces ---
 
 interface FilterBarProps {
-  database: DatabaseName; // ✅ Prop de Tema
+  database: DatabaseName;
   tableName: string;
   onApplyFilters: (filters: FilterParams) => void;
   onClearFilters: () => void;
@@ -94,12 +93,12 @@ const useUniqueId = () => {
   return () => filterIdCounter++;
 };
 
-// --- Componentes Movidos (Atualizados com Tema) ---
+// --- Componentes Movidos ---
 
 const StyledInput: React.FC<
   React.InputHTMLAttributes<HTMLInputElement> & { icon?: React.ReactNode; theme: ThemeType }
 > = ({ icon, className, theme, ...props }) => (
-  <div className={`relative flex-1 ${className}`}>
+  <div className={`relative flex-1 w-full ${className}`}>
     {icon && (
       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
         {icon}
@@ -107,7 +106,6 @@ const StyledInput: React.FC<
     )}
     <input
       {...props}
-      // ✅ Foco com tema aplicado
       className={`form-input w-full px-3 py-2 text-sm border border-gray-300 rounded-lg shadow-sm 
         focus:outline-none focus:ring-2 ${theme.primaryRing} ${theme.primaryBorderFocus} 
         ${icon ? "pl-9" : ""} ${props.disabled ? "bg-gray-100 cursor-not-allowed" : ""}`}
@@ -118,7 +116,7 @@ const StyledInput: React.FC<
 interface RenderValorInputsProps {
   row: FilterRow;
   onChange: (id: number, field: "value" | "valueEnd", newValue: string) => void;
-  theme: ThemeType; // ✅ Recebe o tema
+  theme: ThemeType;
 }
 
 function RenderValorInputs({ row, onChange, theme }: RenderValorInputsProps) {
@@ -132,19 +130,22 @@ function RenderValorInputs({ row, onChange, theme }: RenderValorInputsProps) {
   switch (type) {
     case "string":
       return (
-        <StyledInput
-          type="text"
-          name="value"
-          value={value}
-          onChange={handleChange}
-          placeholder="Valor (ex: Ponto 1)"
-          icon={<IconType size={14} className="text-gray-400" />}
-          theme={theme} // ✅ Passa o tema
-        />
+        <div className="w-full md:flex-1">
+          <StyledInput
+            type="text"
+            name="value"
+            value={value}
+            onChange={handleChange}
+            placeholder="Valor (ex: Ponto 1)"
+            icon={<IconType size={14} className="text-gray-400" />}
+            theme={theme}
+          />
+        </div>
       );
     case "number":
       return (
-        <>
+        // Wrapper Responsivo: Vertical no mobile, Horizontal no desktop
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto md:flex-[2]">
           <StyledInput
             type="number"
             name="value"
@@ -152,9 +153,10 @@ function RenderValorInputs({ row, onChange, theme }: RenderValorInputsProps) {
             onChange={handleChange}
             placeholder="Min"
             icon={<Hash size={14} className="text-gray-400" />}
-            theme={theme} // ✅ Passa o tema
+            theme={theme}
           />
-          <span className="text-gray-500 font-medium">-</span>
+          {/* Separador oculto no mobile */}
+          <span className="text-gray-500 font-medium hidden md:inline">-</span>
           <StyledInput
             type="number"
             name="valueEnd"
@@ -162,13 +164,13 @@ function RenderValorInputs({ row, onChange, theme }: RenderValorInputsProps) {
             onChange={handleChange}
             placeholder="Max"
             icon={<Hash size={14} className="text-gray-400" />}
-            theme={theme} // ✅ Passa o tema
+            theme={theme}
           />
-        </>
+        </div>
       );
     case "date":
       return (
-        <>
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto md:flex-[2]">
           <StyledInput
             type="date"
             name="value"
@@ -176,9 +178,9 @@ function RenderValorInputs({ row, onChange, theme }: RenderValorInputsProps) {
             onChange={handleChange}
             placeholder="Data Início"
             icon={<Calendar size={14} className="text-gray-400" />}
-            theme={theme} // ✅ Passa o tema
+            theme={theme}
           />
-          <span className="text-gray-500 text-sm">até</span>
+          <span className="text-gray-500 text-sm hidden md:inline">até</span>
           <StyledInput
             type="date"
             name="valueEnd"
@@ -186,13 +188,13 @@ function RenderValorInputs({ row, onChange, theme }: RenderValorInputsProps) {
             onChange={handleChange}
             placeholder="Data Fim"
             icon={<Calendar size={14} className="text-gray-400" />}
-            theme={theme} // ✅ Passa o tema
+            theme={theme}
           />
-        </>
+        </div>
       );
     case "time":
       return (
-        <>
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto md:flex-[2]">
           <StyledInput
             type="time"
             name="value"
@@ -200,9 +202,9 @@ function RenderValorInputs({ row, onChange, theme }: RenderValorInputsProps) {
             onChange={handleChange}
             placeholder="Hora Início"
             icon={<Clock size={14} className="text-gray-400" />}
-            theme={theme} // ✅ Passa o tema
+            theme={theme}
           />
-          <span className="text-gray-500 text-sm">até</span>
+          <span className="text-gray-500 text-sm hidden md:inline">até</span>
           <StyledInput
             type="time"
             name="valueEnd"
@@ -210,32 +212,33 @@ function RenderValorInputs({ row, onChange, theme }: RenderValorInputsProps) {
             onChange={handleChange}
             placeholder="Hora Fim"
             icon={<Clock size={14} className="text-gray-400" />}
-            theme={theme} // ✅ Passa o tema
+            theme={theme}
           />
-        </>
+        </div>
       );
     default:
-      return <StyledInput type="text" placeholder="Selecione uma coluna..." disabled theme={theme} />;
+      return (
+        <div className="w-full md:flex-1">
+          <StyledInput type="text" placeholder="Selecione uma coluna..." disabled theme={theme} />
+        </div>
+      );
   }
 }
 
-// --- Sub-componentes Didáticos (Atualizados com Tema) ---
-
-// 1. Cabeçalho da Barra de Filtro
+// 1. Cabeçalho da Barra de Filtro (Responsivo)
 interface FilterBarHeaderProps {
   tableName: string;
   onExportClick: () => void;
   onAddFilterRow: () => void;
-  theme: ThemeType; // ✅ Recebe o tema
+  theme: ThemeType;
 }
 
 function FilterBarHeader({ tableName, onExportClick, onAddFilterRow, theme }: FilterBarHeaderProps) {
-  // Formata o nome da tabela (ex: "abiotico-coluna" -> "Abiotico Coluna")
   const friendlyTableName = tableName.replace(/-/g, " ");
 
   return (
-    <header className="flex flex-wrap justify-between items-center gap-4 mb-4">
-      {/* Título e Subtítulo (com destaque maior para o nome) */}
+    // Flex-col no mobile, flex-row no desktop
+    <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
       <div>
         <h3 className={`text-xl font-bold capitalize ${theme.title}`}>
           {friendlyTableName}
@@ -243,40 +246,39 @@ function FilterBarHeader({ tableName, onExportClick, onAddFilterRow, theme }: Fi
         <p className={`text-sm font-medium ${theme.subtitle}`}>Painel de Filtros</p>
       </div>
 
-      {/* Botões de Ação Principais (com tema) */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
         <button
           onClick={onExportClick}
-          className={`flex items-center py-2 px-4 text-sm font-medium ${theme.secondaryText} bg-white 
-          border ${theme.secondaryBorder} rounded-lg shadow-sm 
+          className={`flex items-center justify-center py-2 px-4 text-sm font-medium ${theme.secondaryText} bg-white 
+          border ${theme.secondaryBorder} rounded-lg shadow-sm w-full sm:w-auto
           transition-all transform hover:scale-105 ${theme.secondaryHover} 
           focus:outline-none focus:ring-2 ${theme.primaryRing} focus:ring-opacity-50`}
         >
           <Download size={16} className="mr-1.5" />
-          Exportar Dados
+          Exportar
         </button>
         <button
           onClick={onAddFilterRow}
-          className={`flex items-center py-2 px-4 text-sm font-medium text-white ${theme.primaryBg} rounded-lg shadow-sm 
-          transition-all transform hover:scale-105 ${theme.primaryHover} 
+          className={`flex items-center justify-center py-2 px-4 text-sm font-medium text-white ${theme.primaryBg} rounded-lg shadow-sm 
+          transition-all transform hover:scale-105 ${theme.primaryHover} w-full sm:w-auto
           focus:outline-none focus:ring-2 ${theme.primaryRing} focus:ring-opacity-50`}
         >
           <Plus size={18} className="mr-1" />
-          Adicionar Filtro
+          Adicionar
         </button>
       </div>
     </header>
   );
 }
 
-// 2. Item da Lista de Filtros (Uma Linha)
+// 2. Item da Lista de Filtros (Responsivo)
 interface FilterRowItemProps {
   row: FilterRow;
   colunasDisponiveis: ColumnInfo[];
   onColumnChange: (id: number, value: string) => void;
   onValueChange: (id: number, field: "value" | "valueEnd", value: string) => void;
   onRemoveRow: (id: number) => void;
-  theme: ThemeType; // ✅ Recebe o tema
+  theme: ThemeType;
 }
 
 function FilterRowItem({
@@ -285,18 +287,19 @@ function FilterRowItem({
   onColumnChange,
   onValueChange,
   onRemoveRow,
-  theme, // ✅ Usa o tema
+  theme,
 }: FilterRowItemProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2 p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
-      {/* Seletor de Coluna */}
+    // Layout: Flex Col no Mobile, Flex Row no Desktop
+    <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
+      
+      {/* Seletor de Coluna: 100% width no mobile, auto no desktop */}
       <select
         value={row.column}
         onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
           onColumnChange(row.id, e.target.value)
         }
-        // ✅ Foco com tema aplicado
-        className={`form-select flex-1 min-w-[200px] px-3 py-2 text-sm border border-gray-300 rounded-lg shadow-sm 
+        className={`form-select w-full md:w-auto md:flex-1 md:min-w-[200px] px-3 py-2 text-sm border border-gray-300 rounded-lg shadow-sm 
         focus:outline-none focus:ring-2 ${theme.primaryRing} ${theme.primaryBorderFocus}`}
       >
         <option value="" disabled>
@@ -309,36 +312,38 @@ function FilterRowItem({
         ))}
       </select>
 
-      {/* Inputs de Valor (Min/Max, Texto, etc.) */}
+      {/* Inputs de Valor (Renderizados verticalmente ou horizontalmente dependendo da tela) */}
       <RenderValorInputs row={row} onChange={onValueChange} theme={theme} />
 
       {/* Botão de Remover Linha */}
-      <button
-        onClick={() => onRemoveRow(row.id)}
-        className="p-2 text-red-500 rounded-full 
-        transition-all transform hover:scale-110 hover:bg-red-100"
-        aria-label="Remover filtro"
-      >
-        <Trash size={18} />
-      </button>
+      {/* Alinhado à direita no mobile para facilitar o toque, ou inline no desktop */}
+      <div className="flex justify-end md:block">
+        <button
+          onClick={() => onRemoveRow(row.id)}
+          className="p-2 text-red-500 rounded-full 
+          transition-all transform hover:scale-110 hover:bg-red-100"
+          aria-label="Remover filtro"
+        >
+          <Trash size={18} />
+        </button>
+      </div>
     </div>
   );
 }
 
-// 3. Ações da Barra de Filtro (Aplicar/Limpar)
+// 3. Ações da Barra de Filtro
 interface FilterBarActionsProps {
   onApply: () => void;
   onClear: () => void;
-  theme: ThemeType; // ✅ Recebe o tema
+  theme: ThemeType;
 }
 
 function FilterBarActions({ onApply, onClear, theme }: FilterBarActionsProps) {
   return (
-    <div className="flex gap-3">
+    <div className="flex flex-col sm:flex-row gap-3">
       <button
         onClick={onApply}
-        // ✅ Botão primário com tema
-        className={`flex items-center py-2 px-4 text-sm font-medium text-white ${theme.primaryBg} rounded-lg shadow-md 
+        className={`flex items-center justify-center py-2 px-4 text-sm font-medium text-white ${theme.primaryBg} rounded-lg shadow-md 
         transition-all transform hover:scale-105 ${theme.primaryHover} 
         focus:outline-none focus:ring-2 ${theme.primaryRing} focus:ring-opacity-50`}
       >
@@ -347,7 +352,7 @@ function FilterBarActions({ onApply, onClear, theme }: FilterBarActionsProps) {
       </button>
       <button
         onClick={onClear}
-        className={`flex items-center py-2 px-4 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-md 
+        className={`flex items-center justify-center py-2 px-4 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-md 
         transition-all transform hover:scale-105 hover:bg-gray-50 
         focus:outline-none focus:ring-2 ${theme.primaryRing} focus:ring-opacity-50`}
       >
@@ -358,10 +363,10 @@ function FilterBarActions({ onApply, onClear, theme }: FilterBarActionsProps) {
   );
 }
 
-// --- Componente Principal (Agora com Tema) ---
+// --- Componente Principal ---
 
 export function FilterBar({
-  database, // ✅ Prop de tema recebida
+  database,
   tableName,
   onApplyFilters,
   onClearFilters,
@@ -371,14 +376,10 @@ export function FilterBar({
   const [filterRows, setFilterRows] = useState<FilterRow[]>([]);
   const getNextId = useUniqueId();
 
-  // ✅ Seleciona o tema com base na prop
   const theme = useMemo(() => {
     const themeName = database as ThemeName;
-    return themes[themeName] || themes.furnas; // 'furnas' como padrão
+    return themes[themeName] || themes.furnas;
   }, [database]);
-
-  // --- Lógica de Handlers (Estado fica aqui) ---
-  // (Nenhuma mudança na lógica, apenas na renderização)
 
   const addFilterRow = () => {
     setFilterRows([
@@ -428,34 +429,27 @@ export function FilterBar({
     onClearFilters();
   }; 
 
-  // --- Renderização Didática (com Tema) ---
-
   return (
-    // ✅ Fundo do wrapper com tema
-    <div className={`p-5 ${theme.wrapperBg} border-b border-gray-200 shadow-lg font-sans`}>
+    <div className={`p-4 md:p-5 ${theme.wrapperBg} border-b border-gray-200 shadow-lg font-sans`}>
       
-      {/* 1. Renderiza o Cabeçalho (passando o tema) */}
       <FilterBarHeader
         tableName={tableName}
         onExportClick={onExportClick}
         onAddFilterRow={addFilterRow}
-        theme={theme} // ✅
+        theme={theme}
       />
       
-      {/* 2. Renderiza a Lista de Filtros */}
       <section className="space-y-3">
         {filterRows.length === 0 && ( 
-          // ✅ Placeholder "Sem box pontilhado", agora é limpo e com tema
           <div className="text-center p-4 rounded-lg">
             <Filter size={18} className={`mx-auto ${theme.placeholderIcon} mb-2`} />
             <p className={`font-medium ${theme.placeholderText}`}>Nenhum filtro aplicado</p>
             <p className={`text-sm ${theme.placeholderText} opacity-80`}>
-              Clique em "Adicionar Filtro" acima para começar a refinar seus dados.
+              Clique em "Adicionar" acima para começar.
             </p>
           </div>
         )}
         
-        {/* Mapeia cada linha de filtro para seu componente */}
         {filterRows.map((row) => (
           <FilterRowItem
             key={row.id}
@@ -464,18 +458,17 @@ export function FilterBar({
             onColumnChange={handleColumnChange}
             onValueChange={handleValueChange}
             onRemoveRow={removeFilterRow}
-            theme={theme} // ✅ Passa o tema
+            theme={theme}
           />
         ))}
       </section>
       
-      {/* 3. Renderiza as Ações (Aplicar/Limpar) se houver filtros */}
       {filterRows.length > 0 && (
         <footer className="mt-4">
           <FilterBarActions 
             onApply={handleApply} 
             onClear={handleClear} 
-            theme={theme} // ✅ Passa o tema
+            theme={theme}
           />
         </footer>
       )}

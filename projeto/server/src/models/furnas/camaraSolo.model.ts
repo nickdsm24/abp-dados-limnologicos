@@ -123,19 +123,25 @@ export class CamaraSoloModel {
      * para a visualização de detalhe.
      */
     public static async findById(id: number): Promise<any | null> {
-        // Query baseada no getById original
+        // Query baseada no getById original + Reservatório (para contexto completo se necessário)
         const result = await furnasPool.query(
             `
             SELECT
                 a.idCamaraSolo, a.dataMedida, a.horaMedida, a.ch4, a.co2, a.n2o,
                 a.tempar, a.tempsolo, a.vento, a.altitude,
                 b.idCampanha, b.nroCampanha,
-                c.idSitio, c.nome AS sitio_nome, c.lat AS sitio_lat, c.lng AS sitio_lng
+                b.dataInicio AS campanha_datainicio,
+                b.dataFim AS campanha_datafim,
+                c.idSitio, c.nome AS sitio_nome, c.lat AS sitio_lat, c.lng AS sitio_lng,
+                c.descricao AS sitio_descricao,
+                d.idreservatorio, d.nome AS reservatorio_nome
             FROM tbcamarasolo AS a
             LEFT JOIN tbcampanha AS b
                 ON a.idCampanha = b.idCampanha
             LEFT JOIN tbsitio AS c
                 ON a.idSitio = c.idSitio
+            LEFT JOIN tbreservatorio AS d 
+                ON b.idReservatorio = d.idReservatorio
             WHERE a.idCamaraSolo = $1
             `,
             [id],
@@ -147,5 +153,102 @@ export class CamaraSoloModel {
         
         // Retorna o primeiro registro "cru"
         return result.rows[0];
+    }
+
+    /**
+     * --- NOVO MÉTODO PARA ANALYTICS (GRÁFICOS) ---
+     * Calcula estatísticas (Média, Min, Max, Desvio Padrão) agrupadas por Reservatório ou Sítio.
+     */
+    public static async getAnalyticsData(options: {
+        metric: string;
+        groupBy: 'reservatorio' | 'sitio';
+        filterReservatorioId?: number;
+    }) {
+        const { metric, groupBy, filterReservatorioId } = options;
+
+        // 1. Mapeamento de métricas (Input Frontend -> Coluna Banco)
+        const metricToColumn: Record<string, string> = {
+            'CH4': 'ch4',
+            'ch4': 'ch4',
+            'CO2': 'co2',
+            'co2': 'co2',
+            'N2O': 'n2o',
+            'n2o': 'n2o',
+            'tempAr': 'tempar',
+            'tempar': 'tempar',
+            'tempSolo': 'tempsolo',
+            'tempsolo': 'tempsolo',
+            'vento': 'vento',
+            'altitude': 'altitude'
+        };
+
+        // Validação
+        if (!metricToColumn.hasOwnProperty(metric)) {
+            throw new Error(`Métrica inválida ou não permitida para análise: ${metric}`);
+        }
+
+        const column = metricToColumn[metric];
+
+        // 2. Construção da Query Dinâmica
+        let selectLabel = '';
+        let groupByClause = '';
+        let whereClauses: string[] = [];
+        let params: any[] = [];
+        let paramCounter = 1;
+
+        // Joins necessários para conectar Dados -> Sítio, Campanha -> Reservatório
+        // a: tbcamarasolo
+        // b: tbcampanha
+        // c: tbsitio
+        // d: tbreservatorio
+        const joinClause = `
+            LEFT JOIN tbcampanha b ON a.idCampanha = b.idCampanha
+            LEFT JOIN tbsitio c ON a.idSitio = c.idSitio
+            LEFT JOIN tbreservatorio d ON b.idReservatorio = d.idReservatorio
+        `;
+
+        if (groupBy === 'reservatorio') {
+            // Agrupar por Reservatório (Visão Macro)
+            selectLabel = 'd.nome AS label, d.idreservatorio AS id';
+            groupByClause = 'GROUP BY d.idreservatorio, d.nome';
+        } else {
+            // Agrupar por Sítio (Visão Micro/Drill-down)
+            selectLabel = 'c.nome AS label, c.idsitio AS id';
+            groupByClause = 'GROUP BY c.idsitio, c.nome';
+        }
+
+        // 3. Filtros
+        
+        // Filtro de Drill-down (Ex: ver apenas sítios de um reservatório específico)
+        if (filterReservatorioId) {
+            whereClauses.push(`d.idreservatorio = $${paramCounter++}`);
+            params.push(filterReservatorioId);
+        }
+
+        // Filtro essencial: Ignorar nulos na métrica escolhida
+        whereClauses.push(`a.${column} IS NOT NULL`);
+
+        const whereString = whereClauses.length > 0 
+            ? 'WHERE ' + whereClauses.join(' AND ') 
+            : '';
+
+        // 4. Montagem Final da Query
+        const query = `
+            SELECT 
+                ${selectLabel},
+                ROUND(AVG(a.${column})::numeric, 2) as media,
+                ROUND(STDDEV(a.${column})::numeric, 2) as desvio_padrao,
+                MIN(a.${column}) as minimo,
+                MAX(a.${column}) as maximo,
+                COUNT(a.${column}) as contagem
+            FROM tbcamarasolo a
+            ${joinClause}
+            ${whereString}
+            ${groupByClause}
+            ORDER BY label ASC
+        `;
+
+        const result = await furnasPool.query(query, params);
+        return result.rows;
     }
 }

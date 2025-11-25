@@ -6,6 +6,9 @@ import { Placeholder } from '../../components/commons/TablePlaceholder';
 import { FilterBar } from '../../components/Filters/FilterBar';
 import { ModalExport } from '../../components/Export/ModalExport'; 
 import { useTableData } from '../../hooks/useTableData';
+// Importação do ícone de menu (renomeado para evitar conflito com o componente Menu)
+import { Menu as MenuIcon } from "lucide-react";
+
 import type { 
   FilterParams, 
   ColumnInfo, 
@@ -27,6 +30,9 @@ export function PageBalcarTable() {
   const [filters, setFilters] = useState<FilterParams>({});
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // NOVO ESTADO: Controle da Sidebar no Mobile
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const { dados, colunas, paginacao, loading, error } = useTableData(
     'balcar', // Database correto
@@ -93,44 +99,68 @@ export function PageBalcarTable() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Menu Lateral */}
+    <div className="flex h-screen bg-gray-100 overflow-hidden">
+      {/* Menu Lateral Responsivo */}
       <Menu 
         title="Dados Balcar"
         database='balcar'
         tabelas={tabelasDisponiveis}
         tabelaAtiva={tabelaAtiva}
         onSelectTabela={handleSelectTabela}
+        // Props obrigatórias para o funcionamento responsivo
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
       />
 
       {/* Área de Conteúdo Principal */}
-      <main className="flex-1 overflow-y-auto">
-        {tabelaAtiva ? (
-          <>
-            <FilterBar 
-              database={"balcar"}
-              tableName={tabelaAtiva}
-              key={tabelaAtiva}
-              onApplyFilters={setFilters}
-              onClearFilters={() => setFilters({})}
-              onExportClick={() => setIsModalOpen(true)}
-              colunasDisponiveis={colunasDisponiveis} 
-            />
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative w-full">
+        
+        {/* BARRA DE TOPO MOBILE (Hambúrguer) */}
+        {/* Visível apenas em telas menores que 'md' */}
+        <div className="md:hidden bg-white p-4 shadow-sm flex items-center justify-between z-20 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="text-gray-600 hover:text-[#4682B4] transition-colors p-1"
+              aria-label="Abrir menu"
+            >
+              <MenuIcon className="w-7 h-7" />
+            </button>
+            <span className="font-bold text-lg text-[#4682B4]">
+              Projeto Balcar
+            </span>
+          </div>
+        </div>
 
-            <DataTable 
-              database="balcar"
-              tableName={tabelaAtiva} 
-              dados={dados}
-              colunas={colunas}
-              loading={loading}
-              error={error}
-              paginacao={paginacao}
-              onPageChange={handlePageChange}
-            />
-          </>
-        ) : (
-          <Placeholder />
-        )}
+        {/* Conteúdo com Scroll */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {tabelaAtiva ? (
+            <>
+              <FilterBar 
+                database={"balcar"}
+                tableName={tabelaAtiva}
+                key={tabelaAtiva}
+                onApplyFilters={setFilters}
+                onClearFilters={() => setFilters({})}
+                onExportClick={() => setIsModalOpen(true)}
+                colunasDisponiveis={colunasDisponiveis} 
+              />
+
+              <DataTable 
+                database="balcar"
+                tableName={tabelaAtiva} 
+                dados={dados}
+                colunas={colunas}
+                loading={loading}
+                error={error}
+                paginacao={paginacao}
+                onPageChange={handlePageChange}
+              />
+            </>
+          ) : (
+            <Placeholder />
+          )}
+        </div>
       </main>
 
       {/* Modal de Exportação */}

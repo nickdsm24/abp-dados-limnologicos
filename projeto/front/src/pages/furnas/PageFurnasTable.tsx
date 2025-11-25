@@ -1,5 +1,4 @@
 // src/pages/furnas/PageFurnasTable.tsx
-// src/pages/furnas/PageFurnasTable.tsx
 import { useState, useMemo } from "react";
 import { Menu } from "../../components/commons/TableMenu";
 import DataTable from "../../components/commons/DataTable";
@@ -7,6 +6,8 @@ import { Placeholder } from "../../components/commons/TablePlaceholder";
 import { FilterBar } from "../../components/Filters/FilterBar";
 import { useTableData } from "../../hooks/useTableData";
 import { ModalExport } from "../../components/Export/ModalExport";
+// Importação do ícone de menu
+import { Menu as MenuIcon } from "lucide-react";
 import type { FilterParams, ColumnInfo, ColumnType } from "../../types/types";
 
 // --- LISTA DE TABELAS (Sem alteração) ---
@@ -56,6 +57,9 @@ export function FurnasTablePage() {
   const [filters, setFilters] = useState<FilterParams>({});
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // NOVO ESTADO: Controle da Sidebar no Mobile
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const { dados, colunas, paginacao, loading, error } = useTableData(
     "furnas",
@@ -119,44 +123,71 @@ export function FurnasTablePage() {
     setCurrentPage(newPage);
   };
 
-  // --- JSX (Sem alteração) ---
+  // --- JSX (Refatorado para Responsividade) ---
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100 overflow-hidden">
+      {/* Menu Lateral Responsivo */}
       <Menu
         database="furnas"
         tabelas={tabelasDisponiveis}
         tabelaAtiva={tabelaAtiva}
         onSelectTabela={handleSelectTabela}
+        // Props obrigatórias para o funcionamento responsivo
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
       />
 
-      <main className="flex-1 overflow-y-auto">
-        {tabelaAtiva ? (
-          <>
-            <FilterBar
-              database={"furnas"}
-              tableName={tabelaAtiva}
-              key={tabelaAtiva}
-              onApplyFilters={setFilters}
-              onClearFilters={() => setFilters({})}
-              onExportClick={() => setIsModalOpen(true)}
-              colunasDisponiveis={colunasDisponiveis}
-            />
+      {/* Área de Conteúdo Principal */}
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative w-full">
+        
+        {/* BARRA DE TOPO MOBILE (Hambúrguer) */}
+        {/* Visível apenas em telas menores que 'md' */}
+        <div className="md:hidden bg-white p-4 shadow-sm flex items-center justify-between z-20 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="text-gray-600 hover:text-[#1777af] transition-colors p-1"
+              aria-label="Abrir menu"
+            >
+              <MenuIcon className="w-7 h-7" />
+            </button>
+            <span className="font-bold text-lg text-[#1777af]">
+              Projeto Furnas
+            </span>
+          </div>
+        </div>
 
-            <DataTable
-              database="furnas"
-              tableName={tabelaAtiva}
-              dados={dados}
-              colunas={colunas}
-              loading={loading}
-              error={error}
-              paginacao={paginacao}
-              onPageChange={handlePageChange}
-            />
-          </>
-        ) : (
-          <Placeholder />
-        )}
+        {/* Conteúdo com Scroll */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {tabelaAtiva ? (
+            <>
+              <FilterBar
+                database={"furnas"}
+                tableName={tabelaAtiva}
+                key={tabelaAtiva}
+                onApplyFilters={setFilters}
+                onClearFilters={() => setFilters({})}
+                onExportClick={() => setIsModalOpen(true)}
+                colunasDisponiveis={colunasDisponiveis}
+              />
 
+              <DataTable
+                database="furnas"
+                tableName={tabelaAtiva}
+                dados={dados}
+                colunas={colunas}
+                loading={loading}
+                error={error}
+                paginacao={paginacao}
+                onPageChange={handlePageChange}
+              />
+            </>
+          ) : (
+            <Placeholder />
+          )}
+        </div>
+
+        {/* Modal (fora do container de scroll para evitar problemas de z-index) */}
         {tabelaAtiva && (
           <ModalExport
             currentPage={paginacao.page}
@@ -175,4 +206,4 @@ export function FurnasTablePage() {
   );
 }
 
-export default FurnasTablePage;   
+export default FurnasTablePage;

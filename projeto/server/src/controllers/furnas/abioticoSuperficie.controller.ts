@@ -4,7 +4,7 @@ import { logger } from "../../configs/logger";
 // 1. Importa os Serviços (formatação e exportação)
 import { DataFormatterService } from "../../services/dataFormatterService";
 import { ExportService, ExportFileOptions } from "../../services/exportService";
-// 2. Importa o NOVO Model
+// 2. Importa o Model
 import { AbioticoSuperficieModel } from "../../models/furnas/abioticoSuperficie.model";
 
 const PAGE_SIZE = Number(process.env.PAGE_SIZE) || 10;
@@ -97,7 +97,7 @@ export const getById = async (req: Request, res: Response): Promise<void> => {
 };
 
 /**
- * Endpoint: exportData (ADICIONADO)
+ * Endpoint: exportData
  * Gera e envia um arquivo (CSV ou XLSX) com base nos filtros e opções.
  */
 export const exportData = async (req: Request, res: Response): Promise<void> => {
@@ -167,6 +167,69 @@ export const exportData = async (req: Request, res: Response): Promise<void> => 
     res.status(500).json({
       success: false,
       error: "Erro ao gerar exportação.",
+    });
+  }
+};
+
+/**
+ * --- NOVO ENDPOINT DE ANALYTICS ---
+ * Endpoint: getAnalytics
+ * Retorna estatísticas agrupadas por Reservatório ou Sítio.
+ * Query Params: metric (obrigatório), groupBy (obrigatório), filterReservatorioId
+ */
+export const getAnalytics = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { metric, groupBy, filterReservatorioId } = req.query;
+
+    // 1. Validações Básicas
+    if (!metric) {
+      res.status(400).json({ 
+        success: false, 
+        error: "Parâmetro 'metric' é obrigatório." 
+      });
+      return;
+    }
+
+    if (groupBy !== 'reservatorio' && groupBy !== 'sitio') {
+      res.status(400).json({ 
+        success: false, 
+        error: "Parâmetro 'groupBy' deve ser 'reservatorio' ou 'sitio'." 
+      });
+      return;
+    }
+
+    // 2. Chama o Model de Agregação
+    const data = await AbioticoSuperficieModel.getAnalyticsData({
+      metric: metric as string,
+      groupBy: groupBy as 'reservatorio' | 'sitio',
+      filterReservatorioId: filterReservatorioId ? Number(filterReservatorioId) : undefined
+    });
+
+    // 3. Retorna o JSON otimizado
+    res.status(200).json({
+      success: true,
+      groupBy,
+      metric,
+      totalGroups: data.length,
+      data
+    });
+
+  } catch (error: any) {
+    logger.error("Erro ao gerar analytics de Abiótico Superfície", {
+      message: error.message,
+      stack: error.stack,
+      query: req.query
+    });
+
+    // Se for erro de métrica inválida (lançado pelo model), retorna 400
+    if (error.message && error.message.includes("Métrica inválida")) {
+      res.status(400).json({ success: false, error: error.message });
+      return;
+    }
+
+    res.status(500).json({
+      success: false,
+      error: "Erro ao processar dados analíticos.",
     });
   }
 };
