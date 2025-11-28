@@ -201,6 +201,61 @@ O **Sprint Backlog** abaixo mostra as histórias selecionadas para esta sprint.
 ![Burndown Sprint 2](docs/sprint-2/burndown_sprint2.jpeg)  
 
 
+---
+## 🚀 Sprint 3
+
+### 🎯 Objetivo
+Finalizar as funcionalidades centrais da aplicação, melhorar a estabilidade do sistema, entregar os gráficos de séries temporais e consolidar a integração entre front-end, back-end e banco de dados.
+
+### 📅 Período
+06/11/2025 a 25/11/2025
+
+### 📋 Sprint Backlog
+
+O **Sprint Backlog** abaixo mostra as histórias selecionadas para esta sprint.  
+
+| ID   | História / Tarefa                                | Prioridade | Pontos |
+|------|--------------------------------------------------|------------|--------|
+| US05 | Exportação CSV                                   | Alta       | 8      |
+| US07 | Gráficos de séries temporais                     | Média      | 3      |
+| US08 | Usabilidade e desempenho                         | Média      | 5      |
+| US11 | Endpoint Read de entidades                       | Alta       | 5      |
+| US12 | Endpoint de exportação CSV                       | Alta       | 5      |
+
+### 🔍 Sprint Review
+- **Data:** 25/11/2025  
+- **Formato:** Demonstração ao vivo  
+
+### ✅ O que deu certo
+- Finalização dos gráficos de séries temporais conforme requisitos  
+- Integração mais estável entre front-end e back-end  
+- Melhorias na performance e usabilidade da interface  
+- Realização do deploy  
+
+### ⚠️ Pontos a melhorar
+- Organização das tasks e planejamento do time para cumprir o Product Backlog  
+- Realizar reuniões com o cliente para suprir as expectativas  
+- Melhorar o planejamento do Product Backlog, levando em conta o prazo e o modelo de projeto adotado pela faculdade  
+
+### 🎲 Planning Poker  
+## 🚀 Sprint Backlog – Sprint Atual (Resumo de Complexidade)
+
+| ID   | História / Tarefa                                | Pontos |
+|------|--------------------------------------------------|--------|
+| US05 | Exportação CSV                                   | 8      |
+| US07 | Gráficos de séries temporais                     | 3      |
+| US08 | Usabilidade e desempenho                         | 5      |
+| US11 | Endpoint Read de entidades                       | 5      |
+| US12 | Endpoint de exportação CSV                       | 5      |
+
+#### Complexidade total da Sprint: Alta  
+#### Quantidade de histórias planejadas: 5  
+#### Total de pontos: 26
+
+### 📉 Gráfico Burndown
+![Burndown Sprint 3](docs/sprint-3/burndown_sprint3.png)
+
+
 
 
 
