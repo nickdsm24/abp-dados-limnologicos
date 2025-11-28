@@ -350,7 +350,7 @@ const FurnasDashboard: React.FC = () => {
             <div>
                 <h1 className="text-3xl font-bold flex items-center gap-2 mb-2">
                     <span className="w-2 h-8 rounded bg-cyan-700 block"></span>
-                    Analytics Furnas
+                    Análises Furnas
                 </h1>
                 <p className="text-slate-400 text-sm">
                     Monitoramento multidimensional por reservatório e sítio.
