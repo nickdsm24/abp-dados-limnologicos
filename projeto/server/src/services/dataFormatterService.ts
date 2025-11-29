@@ -157,6 +157,13 @@ export class DataFormatterService {
       delete formatted.idCampanha;
       delete formatted.nrocampanha;
     }
+    if (row.rotulo !== undefined || row.rotulo !== undefined) {
+      formatted.campanha = row.nrocampanha; // Usa o alias da query
+      // Limpa os campos originais
+      delete formatted.rotulo;
+      delete formatted.rotulo;
+      delete formatted.rotulo;
+    }
 
     // Remove outros campos de join que não queremos na lista
     delete formatted.sitio_lat;

@@ -26,6 +26,9 @@ import FurnasUsinas from "./pages/furnas/InfoFurnas/FurnasUsinas";
 import FurnasPesquisas from "./pages/furnas/InfoFurnas/FurnasPesquisas";
 import FurnasLink from "./pages/furnas/InfoFurnas/FurnasLink";
 import FurnasPublicacoes from "./pages/furnas/InfoFurnas/FurnasPublicacoes.tsx";
+import BalcarDescricao from "./pages/balcar/InfoBalcar/BalcarDescricao.tsx";
+import BalcarEquipe from "./pages/balcar/InfoBalcar/BalcarEquipe.tsx";
+import BalcarPublicacoes from "./pages/balcar/InfoBalcar/BalcarPublicacoes.tsx";
 
 
 function App() {
@@ -70,6 +73,9 @@ function AppWithRouter() {
           <Route path="/balcar-graph" element={<BalcarGraph />} />
           <Route path="/balcar-map" element={<BalcarMap />} />
           <Route path="/balcar-info" element={<BalcarInfo />} />
+          <Route path="/balcar-descricao" element={<BalcarDescricao />} />
+          <Route path="/balcar-equipe" element={<BalcarEquipe />} />
+          <Route path="/balcar-publicacoes" element={<BalcarPublicacoes />} />
           <Route path="/furnas" element={<FurnasMenu />} />
           <Route path="/furnas-table" element={<FurnasTable />} />
           <Route path="/furnas-graph" element={<FurnasGraph />} />
